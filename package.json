@@ -15,7 +15,8 @@
     "bmad:plan": "echo '🧠 Multi-agent planning for automation workflows...'",
     "bmad:deploy": "./deploy.sh",
     "bmad:analyze": "./monitor.sh",
-    "bmad:health": "echo '🏥 System Health Check' && curl -s http://localhost:5678 > /dev/null && echo '✅ n8n Running' || echo '❌ n8n Down'"
+    "bmad:health": "echo '🏥 System Health Check' && curl -s http://localhost:5678 > /dev/null && echo '✅ n8n Running' || echo '❌ n8n Down'",
+    "bmad:test": "node scripts/test-story-splitting.js"
   },
   "keywords": [
     "linkedin",

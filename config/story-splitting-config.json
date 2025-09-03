@@ -1,0 +1,106 @@
+{
+  "story_splitting": {
+    "enabled": true,
+    "auto_split_threshold": 2,
+    "max_splits_per_story": 5,
+    "conflict_analysis": {
+      "enabled": true,
+      "severity_threshold": "medium",
+      "auto_resolve_low": true
+    },
+    "split_patterns": {
+      "frontend_backend": {
+        "enabled": true,
+        "pattern": "frontend.*backend|backend.*frontend|full.?stack",
+        "dependency_order": ["backend", "frontend"]
+      },
+      "api_implementation": {
+        "enabled": true,
+        "pattern": "api.*implementation|implement.*api|create.*api.*and",
+        "dependency_order": ["api_design", "implementation"]
+      },
+      "database_logic": {
+        "enabled": true,
+        "pattern": "database.*logic|model.*controller|schema.*business",
+        "dependency_order": ["database", "business_logic"]
+      },
+      "ui_logic": {
+        "enabled": true,
+        "pattern": "ui.*logic|interface.*business|form.*validation",
+        "dependency_order": ["ui", "integration"]
+      },
+      "auth_flow": {
+        "enabled": true,
+        "pattern": "auth.*flow|login.*register|authentication.*authorization",
+        "dependency_order": ["auth_backend", "auth_ui", "auth_integration"]
+      },
+      "testing": {
+        "enabled": true,
+        "pattern": "unit.*integration|test.*implement|implement.*test",
+        "dependency_order": ["implementation", "testing"]
+      },
+      "multiple_features": {
+        "enabled": true,
+        "pattern": "and|,|\\+|also|additionally|furthermore",
+        "split_method": "feature_extraction",
+        "max_features": 5,
+        "min_feature_length": 10
+      }
+    },
+    "conflict_patterns": {
+      "file_conflict": {
+        "pattern": "same\\s+file|modify\\s+.*\\s+file|edit\\s+.*\\s+file",
+        "severity": "high",
+        "resolution": "sequential_execution"
+      },
+      "schema_conflict": {
+        "pattern": "database\\s+schema|migration",
+        "severity": "high",
+        "resolution": "coordinate_changes"
+      },
+      "deployment_conflict": {
+        "pattern": "deploy|deployment|build|compile",
+        "severity": "high",
+        "resolution": "combined_deployment"
+      },
+      "dependency_conflict": {
+        "pattern": "dependency|package|library|framework",
+        "severity": "medium",
+        "resolution": "resolve_dependencies_first"
+      },
+      "interface_conflict": {
+        "pattern": "api\\s+contract|interface|contract",
+        "severity": "medium",
+        "resolution": "define_contracts_first"
+      },
+      "config_conflict": {
+        "pattern": "config|configuration|environment",
+        "severity": "medium",
+        "resolution": "coordinate_config_changes"
+      },
+      "test_conflict": {
+        "pattern": "test.*setup|test.*config|test.*environment",
+        "severity": "low",
+        "resolution": "coordinate_test_environments"
+      }
+    },
+    "story_templates": {
+      "feature": {
+        "sections": ["overview", "requirements", "acceptance_criteria", "technical_approach"],
+        "estimated_complexity": "medium"
+      },
+      "bugfix": {
+        "sections": ["problem_description", "root_cause", "solution_approach", "testing_strategy"],
+        "estimated_complexity": "low"
+      },
+      "refactor": {
+        "sections": ["current_state", "target_state", "refactoring_steps", "risk_assessment"],
+        "estimated_complexity": "medium"
+      },
+      "architecture": {
+        "sections": ["current_architecture", "proposed_architecture", "migration_plan", "impact_analysis"],
+        "estimated_complexity": "high"
+      }
+    }
+  }
+}
