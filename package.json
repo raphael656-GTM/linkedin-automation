@@ -8,7 +8,14 @@
     "dev": "./conductor-dev.sh",
     "deploy": "./deploy.sh",
     "monitor": "./monitor.sh",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "bmad:init": "echo '🚀 BMAD Init - LinkedIn Automation Project Initialized'",
+    "bmad:flatten": "echo '📁 Flattening codebase context...' && find . -name '*.js' -o -name '*.json' -o -name '*.md' | head -20",
+    "bmad:story": "node scripts/story-generator.js",
+    "bmad:plan": "echo '🧠 Multi-agent planning for automation workflows...'",
+    "bmad:deploy": "./deploy.sh",
+    "bmad:analyze": "./monitor.sh",
+    "bmad:health": "echo '🏥 System Health Check' && curl -s http://localhost:5678 > /dev/null && echo '✅ n8n Running' || echo '❌ n8n Down'"
   },
   "keywords": [
     "linkedin",
