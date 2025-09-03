@@ -1,0 +1,424 @@
+{
+  "name": "LinkedIn Automation - AI Personalization & Message Generation",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/webhook/ai-personalization-trigger",
+        "responseMode": "responseNode",
+        "options": {
+          "noResponseBody": false
+        }
+      },
+      "id": "personalization-webhook",
+      "name": "AI Personalization Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "ai-personalization-trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and prepare profile data for AI analysis\nconst webhook = $input.first();\nconst data = webhook.json.body || webhook.json;\n\nconst profileData = data.profile_data || {};\nconst profile = profileData.profile || {};\nconst posts = profileData.posts || [];\nconst activity = profileData.activity || {};\n\n// Create comprehensive context for AI\nconst aiContext = {\n  prospect: {\n    name: profile.name || '',\n    headline: profile.headline || '',\n    summary: profile.summary || '',\n    company: profile.company_name || '',\n    industry: profile.industry || '',\n    location: profile.location || ''\n  },\n  recent_activity: {\n    recent_posts: posts.slice(0, 5).map(post => ({\n      content: post.text,\n      engagement: post.engagement,\n      date: post.date\n    })),\n    total_posts: activity.recent_posts_count || 0,\n    last_activity: activity.last_activity || ''\n  },\n  engagement_data: {\n    avg_engagement: posts.reduce((sum, post) => sum + (post.engagement || 0), 0) / Math.max(posts.length, 1),\n    most_engaged_post: posts.sort((a, b) => (b.engagement || 0) - (a.engagement || 0))[0] || null,\n    posting_frequency: posts.length > 0 ? 'active' : 'inactive'\n  },\n  personalization_hints: {\n    talking_points: [],\n    shared_interests: [],\n    conversation_starters: []\n  }\n};\n\n// Extract talking points from posts\nif (posts.length > 0) {\n  const keywords = posts.flatMap(post => \n    (post.text || '').toLowerCase()\n      .split(' ')\n      .filter(word => word.length > 4)\n      .slice(0, 3)\n  );\n  aiContext.personalization_hints.talking_points = [...new Set(keywords)].slice(0, 5);\n}\n\nreturn [{\n  json: {\n    email: data.email,\n    linkedin_id: data.linkedin_id,\n    linkedin_url: data.linkedin_url,\n    tier: data.tier || 'tier3',\n    ai_context: aiContext,\n    processing_timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "prepare-ai-context",
+      "name": "Prepare AI Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-sonnet-20240229",
+        "prompt": "You are a LinkedIn outreach specialist creating personalized messages for B2B lead generation.\n\nProspect Information:\nName: {{ $json.ai_context.prospect.name }}\nHeadline: {{ $json.ai_context.prospect.headline }}\nCompany: {{ $json.ai_context.prospect.company }}\nIndustry: {{ $json.ai_context.prospect.industry }}\nSummary: {{ $json.ai_context.prospect.summary }}\n\nRecent Activity:\n{% for post in $json.ai_context.recent_activity.recent_posts %}\n- {{ post.content }} ({{ post.engagement }} engagement)\n{% endfor %}\n\nTalking Points: {{ $json.ai_context.personalization_hints.talking_points | join(', ') }}\n\nTier: {{ $json.tier }} (tier1 = high-touch, tier2 = standard, tier3 = nurture)\n\nCreate a 3-message sequence for this prospect:\n\nMessage 1 (Connection-based): A warm, connection-focused message referencing their recent activity or profile\nMessage 2 (Value-focused): Present a specific value proposition based on their industry/role\nMessage 3 (CTA-focused): Clear call-to-action with next steps\n\nRequirements:\n- Each message 50-150 words\n- Professional but conversational tone\n- Reference specific details from their profile\n- Include personalization score (1-10)\n- Avoid generic templates\n- Adapt formality level based on tier\n\nReturn as JSON with this structure:\n{\n  \"messages\": [\n    {\n      \"sequence\": 1,\n      \"subject\": \"subject line\",\n      \"content\": \"message content\",\n      \"personalization_elements\": [\"element1\", \"element2\"],\n      \"delay_days\": 0\n    },\n    // ... messages 2 and 3\n  ],\n  \"personalization_score\": 8,\n  \"strategy_notes\": \"brief explanation of approach\",\n  \"talking_points_used\": [\"point1\", \"point2\"]\n}",
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 2000
+        }
+      },
+      "id": "generate-ai-messages",
+      "name": "Generate AI Messages",
+      "type": "n8n-nodes-base.ai",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and validate AI-generated messages\nconst aiResponse = $input.first().json;\nconst originalData = $input.all()[0].json; // Get original data from previous node\n\nlet messageData;\ntry {\n  // Extract JSON from AI response\n  const jsonMatch = aiResponse.response.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    messageData = JSON.parse(jsonMatch[0]);\n  } else {\n    throw new Error('No JSON found in AI response');\n  }\n} catch (error) {\n  // Fallback: create basic message structure\n  console.log('AI JSON parsing failed, using fallback:', error.message);\n  messageData = {\n    messages: [\n      {\n        sequence: 1,\n        subject: `Great connecting with you, ${originalData.ai_context.prospect.name}`,\n        content: `Hi ${originalData.ai_context.prospect.name}, I noticed your work in ${originalData.ai_context.prospect.industry} and would love to connect.`,\n        personalization_elements: ['name', 'industry'],\n        delay_days: 0\n      },\n      {\n        sequence: 2,\n        subject: 'Quick question about your work',\n        content: 'Following up on my previous message. I work with companies in your industry and thought you might find our solution interesting.',\n        personalization_elements: ['industry'],\n        delay_days: 2\n      },\n      {\n        sequence: 3,\n        subject: 'Last attempt - worth a quick chat?',\n        content: 'One final follow-up. Would you be open to a 15-minute call to discuss how we might help your team?',\n        personalization_elements: [],\n        delay_days: 5\n      }\n    ],\n    personalization_score: 4,\n    strategy_notes: 'Basic fallback messages due to AI parsing error',\n    talking_points_used: []\n  };\n}\n\n// Quality validation\nconst qualityChecks = {\n  message_count: messageData.messages?.length === 3,\n  personalization_score: (messageData.personalization_score || 0) >= 5,\n  content_length: messageData.messages?.every(msg => \n    msg.content && msg.content.length >= 50 && msg.content.length <= 300\n  ),\n  has_personalization: messageData.messages?.some(msg => \n    msg.personalization_elements && msg.personalization_elements.length > 0\n  )\n};\n\nconst qualityScore = Object.values(qualityChecks).filter(Boolean).length / Object.keys(qualityChecks).length;\nconst qualityPassed = qualityScore >= 0.75;\n\nreturn [{\n  json: {\n    email: originalData.email,\n    linkedin_id: originalData.linkedin_id,\n    tier: originalData.tier,\n    messages: messageData.messages,\n    personalization_score: messageData.personalization_score,\n    strategy_notes: messageData.strategy_notes,\n    talking_points_used: messageData.talking_points_used,\n    quality_checks: qualityChecks,\n    quality_score: Math.round(qualityScore * 100) / 100,\n    quality_passed: qualityPassed,\n    generation_timestamp: new Date().toISOString(),\n    ai_model: 'claude-3-sonnet',\n    processing_cost: 0.02 // Estimated cost per AI generation\n  }\n}];"
+      },
+      "id": "parse-ai-response",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "quality-passed",
+              "leftValue": "={{ $json.quality_passed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            },
+            {
+              "id": "personalization-score",
+              "leftValue": "={{ $json.personalization_score }}",
+              "rightValue": 6,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-quality-messages",
+      "name": "Filter Quality Messages",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Prospects"
+        },
+        "columnToMatchOn": "email",
+        "valueToMatchOn": "={{ $json.email }}",
+        "fieldsToUpdate": {
+          "values": [
+            {
+              "column": "personalization_status",
+              "value": "completed"
+            },
+            {
+              "column": "personalization_score",
+              "value": "={{ $json.personalization_score }}"
+            },
+            {
+              "column": "quality_score",
+              "value": "={{ $json.quality_score }}"
+            },
+            {
+              "column": "messages_generated",
+              "value": "={{ $json.messages.length }}"
+            },
+            {
+              "column": "ai_generation_date",
+              "value": "={{ $json.generation_timestamp }}"
+            },
+            {
+              "column": "message_delivery_status",
+              "value": "pending"
+            }
+          ]
+        }
+      },
+      "id": "update-personalization-status",
+      "name": "Update Personalization Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/message-delivery-trigger",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "trigger-message-delivery",
+      "name": "Trigger Message Delivery",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "quality-failed",
+              "leftValue": "={{ $json.quality_passed }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "filter-quality-failed",
+      "name": "Filter Quality Failed",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1120, 460]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle quality failed messages - regenerate or flag for manual review\nconst data = $input.first().json;\n\n// Log quality failure for monitoring\nconsole.log(`Quality check failed for ${data.email}:`, {\n  quality_score: data.quality_score,\n  personalization_score: data.personalization_score,\n  quality_checks: data.quality_checks\n});\n\n// Determine if we should retry or flag for manual review\nconst shouldRetry = data.personalization_score >= 4 && data.quality_score >= 0.5;\n\nreturn [{\n  json: {\n    ...data,\n    status: shouldRetry ? 'retry' : 'manual_review',\n    failure_reason: 'quality_check_failed',\n    retry_count: (data.retry_count || 0) + 1,\n    max_retries: 2\n  }\n}];"
+      },
+      "id": "handle-quality-failed",
+      "name": "Handle Quality Failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 460]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "should-retry",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "retry",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "under-max-retries",
+              "leftValue": "={{ $json.retry_count }}",
+              "rightValue": "={{ $json.max_retries }}",
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-retry",
+      "name": "Filter Retry Cases",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1560, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/ai-personalization-trigger",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000,
+          "headers": {
+            "X-Retry-Attempt": "={{ $json.retry_count }}"
+          }
+        }
+      },
+      "id": "retry-personalization",
+      "name": "Retry Personalization",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 460]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', email: $json.email, personalization_score: $json.personalization_score, quality_score: $json.quality_score, timestamp: $json.generation_timestamp }) }}"
+      },
+      "id": "personalization-response",
+      "name": "Personalization Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Analytics and cost tracking\nconst items = $input.all();\nconst analytics = {\n  total_processed: items.length,\n  quality_passed: items.filter(i => i.json.quality_passed).length,\n  quality_failed: items.filter(i => !i.json.quality_passed).length,\n  avg_personalization_score: items.reduce((sum, i) => sum + (i.json.personalization_score || 0), 0) / items.length,\n  avg_quality_score: items.reduce((sum, i) => sum + (i.json.quality_score || 0), 0) / items.length,\n  total_ai_cost: items.reduce((sum, i) => sum + (i.json.processing_cost || 0), 0),\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('AI Personalization Analytics:', JSON.stringify(analytics, null, 2));\n\nreturn [{ json: analytics }];"
+      },
+      "id": "personalization-analytics",
+      "name": "Personalization Analytics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 380]
+    }
+  ],
+  "connections": {
+    "AI Personalization Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Context": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Messages": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Filter Quality Messages",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Quality Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Quality Messages": {
+      "main": [
+        [
+          {
+            "node": "Update Personalization Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Personalization Status": {
+      "main": [
+        [
+          {
+            "node": "Trigger Message Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Message Delivery": {
+      "main": [
+        [
+          {
+            "node": "Personalization Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Quality Failed": {
+      "main": [
+        [
+          {
+            "node": "Handle Quality Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Quality Failed": {
+      "main": [
+        [
+          {
+            "node": "Filter Retry Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Retry Cases": {
+      "main": [
+        [
+          {
+            "node": "Retry Personalization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalization Response": {
+      "main": [
+        [
+          {
+            "node": "Personalization Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-09-03T14:45:00.000Z",
+      "updatedAt": "2025-09-03T14:45:00.000Z",
+      "id": "linkedin-automation",
+      "name": "LinkedIn Automation"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-09-03T14:45:00.000Z",
+  "versionId": "initial"
+}

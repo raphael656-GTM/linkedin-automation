@@ -1,0 +1,351 @@
+{
+  "name": "LinkedIn Automation - Message Delivery to Lemlist",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/webhook/message-delivery-trigger",
+        "responseMode": "responseNode",
+        "options": {
+          "noResponseBody": false
+        }
+      },
+      "id": "delivery-webhook",
+      "name": "Message Delivery Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "message-delivery-trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare messages for Lemlist delivery\nconst webhook = $input.first();\nconst data = webhook.json.body || webhook.json;\n\nconst messages = data.messages || [];\nconst email = data.email;\nconst tier = data.tier;\n\n// Format messages for Lemlist custom fields and sequence\nconst formattedMessages = messages.map((msg, index) => ({\n  sequence_number: msg.sequence || index + 1,\n  subject: msg.subject || `Message ${index + 1}`,\n  content: msg.content,\n  delay_days: msg.delay_days || (index * 2), // Default 0, 2, 4 day delays\n  personalization_elements: msg.personalization_elements || [],\n  message_type: index === 0 ? 'connection' : index === 1 ? 'value' : 'cta'\n}));\n\n// Campaign mapping based on tier\nconst campaignMap = {\n  'tier1': 'high-touch-campaign',\n  'tier2': 'standard-campaign',\n  'tier3': 'nurture-campaign'\n};\n\nreturn [{\n  json: {\n    email: email,\n    linkedin_id: data.linkedin_id,\n    tier: tier,\n    campaign_id: campaignMap[tier] || 'nurture-campaign',\n    messages: formattedMessages,\n    personalization_score: data.personalization_score,\n    delivery_timestamp: new Date().toISOString(),\n    total_messages: formattedMessages.length\n  }\n}];"
+      },
+      "id": "prepare-delivery",
+      "name": "Prepare Message Delivery",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "updateCustomFields",
+        "email": "={{ $json.email }}",
+        "customFields": {
+          "message_1_subject": "={{ $json.messages[0].subject }}",
+          "message_1_content": "={{ $json.messages[0].content }}",
+          "message_2_subject": "={{ $json.messages[1].subject }}",
+          "message_2_content": "={{ $json.messages[1].content }}",
+          "message_3_subject": "={{ $json.messages[2].subject }}",
+          "message_3_content": "={{ $json.messages[2].content }}",
+          "personalization_score": "={{ $json.personalization_score }}",
+          "message_sequence_ready": "true",
+          "ai_generated_date": "={{ $json.delivery_timestamp }}"
+        }
+      },
+      "id": "update-lemlist-fields",
+      "name": "Update Lemlist Custom Fields",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create individual message delivery jobs\nconst data = $input.first().json;\nconst messages = data.messages;\n\n// Create separate items for each message to schedule delivery\nconst deliveryJobs = messages.map((message, index) => ({\n  json: {\n    email: data.email,\n    campaign_id: data.campaign_id,\n    message: message,\n    scheduled_delay: message.delay_days,\n    delivery_date: new Date(Date.now() + (message.delay_days * 24 * 60 * 60 * 1000)).toISOString(),\n    message_index: index,\n    is_first_message: index === 0,\n    total_messages: data.total_messages\n  }\n}));\n\nreturn deliveryJobs;"
+      },
+      "id": "split-message-jobs",
+      "name": "Split Message Delivery Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-first-message",
+              "leftValue": "={{ $json.is_first_message }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-first-message",
+      "name": "Filter First Message",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1120, 220]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-follow-up",
+              "leftValue": "={{ $json.is_first_message }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-follow-up-messages",
+      "name": "Filter Follow-up Messages", 
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1120, 380]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "sendMessage",
+        "campaignId": "={{ $json.campaign_id }}",
+        "email": "={{ $json.email }}",
+        "subject": "={{ $json.message.subject }}",
+        "content": "={{ $json.message.content }}",
+        "sendImmediately": true
+      },
+      "id": "send-first-message",
+      "name": "Send First Message Now",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [1340, 220]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "scheduleMessage",
+        "campaignId": "={{ $json.campaign_id }}",
+        "email": "={{ $json.email }}",
+        "subject": "={{ $json.message.subject }}",
+        "content": "={{ $json.message.content }}",
+        "scheduleDate": "={{ $json.delivery_date }}"
+      },
+      "id": "schedule-follow-up",
+      "name": "Schedule Follow-up Messages",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [1340, 380]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Prospects"
+        },
+        "columnToMatchOn": "email",
+        "valueToMatchOn": "={{ $json.email }}",
+        "fieldsToUpdate": {
+          "values": [
+            {
+              "column": "message_delivery_status",
+              "value": "delivered"
+            },
+            {
+              "column": "first_message_sent",
+              "value": "={{ $json.delivery_date || new Date().toISOString() }}"
+            },
+            {
+              "column": "sequence_active",
+              "value": "true"
+            },
+            {
+              "column": "next_follow_up",
+              "value": "={{ new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "update-delivery-status",
+      "name": "Update Delivery Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'delivered', email: $json.email, messages_scheduled: $json.total_messages, first_message_sent: true, timestamp: $json.delivery_date }) }}"
+      },
+      "id": "delivery-response",
+      "name": "Delivery Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Message delivery analytics\nconst items = $input.all();\nconst analytics = {\n  total_sequences_delivered: new Set(items.map(i => i.json.email)).size,\n  total_messages_scheduled: items.length,\n  immediate_messages: items.filter(i => i.json.is_first_message).length,\n  scheduled_messages: items.filter(i => !i.json.is_first_message).length,\n  tier_distribution: {\n    tier1: items.filter(i => i.json.campaign_id?.includes('high-touch')).length,\n    tier2: items.filter(i => i.json.campaign_id?.includes('standard')).length,\n    tier3: items.filter(i => i.json.campaign_id?.includes('nurture')).length\n  },\n  avg_personalization_score: items.reduce((sum, i) => sum + (i.json.personalization_score || 0), 0) / items.length,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('Message Delivery Analytics:', JSON.stringify(analytics, null, 2));\n\nreturn [{ json: analytics }];"
+      },
+      "id": "delivery-analytics",
+      "name": "Delivery Analytics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300]
+    }
+  ],
+  "connections": {
+    "Message Delivery Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Message Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Message Delivery": {
+      "main": [
+        [
+          {
+            "node": "Update Lemlist Custom Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Lemlist Custom Fields": {
+      "main": [
+        [
+          {
+            "node": "Split Message Delivery Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Message Delivery Jobs": {
+      "main": [
+        [
+          {
+            "node": "Filter First Message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Follow-up Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter First Message": {
+      "main": [
+        [
+          {
+            "node": "Send First Message Now",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Follow-up Messages": {
+      "main": [
+        [
+          {
+            "node": "Schedule Follow-up Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send First Message Now": {
+      "main": [
+        [
+          {
+            "node": "Update Delivery Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Follow-up Messages": {
+      "main": [
+        [
+          {
+            "node": "Update Delivery Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Delivery Status": {
+      "main": [
+        [
+          {
+            "node": "Delivery Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delivery Response": {
+      "main": [
+        [
+          {
+            "node": "Delivery Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-09-03T14:50:00.000Z",
+      "updatedAt": "2025-09-03T14:50:00.000Z",
+      "id": "linkedin-automation",
+      "name": "LinkedIn Automation"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-09-03T14:50:00.000Z",
+  "versionId": "initial"
+}

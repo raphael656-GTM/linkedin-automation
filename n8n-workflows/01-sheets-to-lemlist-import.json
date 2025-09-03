@@ -1,0 +1,262 @@
+{
+  "name": "LinkedIn Automation - Sheets to Lemlist Import",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "value": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "trigger-daily",
+      "name": "Daily Import Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Prospects"
+        },
+        "options": {
+          "range": "A:Z",
+          "useHeader": true
+        }
+      },
+      "id": "read-prospects",
+      "name": "Read Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "filter-new-prospects",
+              "leftValue": "={{ $json.lemlist_status }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isEmpty"
+              }
+            },
+            {
+              "id": "filter-has-email",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-new-prospects",
+      "name": "Filter New Prospects",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tier assignment logic based on company size and industry\nconst items = $input.all();\n\nconst processedItems = items.map(item => {\n  const data = item.json;\n  \n  // Determine tier based on company size and priority\n  let tier = 'tier3'; // Default to nurture\n  \n  const companySize = parseInt(data.company_size) || 0;\n  const industry = data.industry?.toLowerCase() || '';\n  const priority = data.priority?.toLowerCase() || 'low';\n  \n  // Tier 1: High-touch (Fortune 500, Tech companies, High priority)\n  if (companySize > 10000 || \n      ['technology', 'software', 'saas'].includes(industry) ||\n      priority === 'high') {\n    tier = 'tier1';\n  }\n  // Tier 2: Standard (Mid-size companies, Specific industries)\n  else if (companySize > 500 || \n           ['finance', 'healthcare', 'manufacturing'].includes(industry) ||\n           priority === 'medium') {\n    tier = 'tier2';\n  }\n  \n  // Add lemlist campaign mapping\n  const campaignMap = {\n    'tier1': 'high-touch-campaign',\n    'tier2': 'standard-campaign',\n    'tier3': 'nurture-campaign'\n  };\n  \n  return {\n    json: {\n      ...data,\n      tier: tier,\n      lemlist_campaign: campaignMap[tier],\n      processed_date: new Date().toISOString()\n    }\n  };\n});\n\nreturn processedItems;"
+      },
+      "id": "tier-assignment",
+      "name": "Tier Assignment Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "add",
+        "email": "={{ $json.email }}",
+        "campaignId": "={{ $json.lemlist_campaign }}",
+        "additionalFields": {
+          "firstName": "={{ $json.first_name }}",
+          "lastName": "={{ $json.last_name }}",
+          "companyName": "={{ $json.company }}",
+          "customFields": {
+            "company_size": "={{ $json.company_size }}",
+            "industry": "={{ $json.industry }}",
+            "linkedin_url": "={{ $json.linkedin_url }}",
+            "tier": "={{ $json.tier }}",
+            "source": "google_sheets"
+          }
+        }
+      },
+      "id": "add-to-lemlist",
+      "name": "Add to Lemlist Campaign",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list", 
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Prospects"
+        },
+        "columnToMatchOn": "email",
+        "valueToMatchOn": "={{ $json.email }}",
+        "fieldsToUpdate": {
+          "values": [
+            {
+              "column": "lemlist_status",
+              "value": "imported"
+            },
+            {
+              "column": "lemlist_id", 
+              "value": "={{ $json.id }}"
+            },
+            {
+              "column": "lemlist_campaign",
+              "value": "={{ $json.lemlist_campaign }}"
+            },
+            {
+              "column": "tier",
+              "value": "={{ $json.tier }}"
+            },
+            {
+              "column": "import_date",
+              "value": "={{ $json.processed_date }}"
+            }
+          ]
+        }
+      },
+      "id": "update-sheets",
+      "name": "Update Google Sheets Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log import statistics\nconst items = $input.all();\nconst stats = {\n  total_processed: items.length,\n  tier1_count: items.filter(i => i.json.tier === 'tier1').length,\n  tier2_count: items.filter(i => i.json.tier === 'tier2').length,\n  tier3_count: items.filter(i => i.json.tier === 'tier3').length,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('Import Statistics:', stats);\n\n// Return summary for webhook notification\nreturn [{ json: stats }];"
+      },
+      "id": "import-stats",
+      "name": "Import Statistics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    }
+  ],
+  "connections": {
+    "Daily Import Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Filter New Prospects", 
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter New Prospects": {
+      "main": [
+        [
+          {
+            "node": "Tier Assignment Logic",
+            "type": "main", 
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tier Assignment Logic": {
+      "main": [
+        [
+          {
+            "node": "Add to Lemlist Campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Lemlist Campaign": {
+      "main": [
+        [
+          {
+            "node": "Update Google Sheets Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Google Sheets Status": {
+      "main": [
+        [
+          {
+            "node": "Import Statistics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-09-03T14:30:00.000Z",
+      "updatedAt": "2025-09-03T14:30:00.000Z",
+      "id": "linkedin-automation",
+      "name": "LinkedIn Automation"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-09-03T14:30:00.000Z",
+  "versionId": "initial"
+}

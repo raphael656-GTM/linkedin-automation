@@ -1,0 +1,398 @@
+{
+  "routing": {
+    "distributionTargets": {
+      "direct": 80,
+      "tier1": 15,
+      "tier2": 4,
+      "tier3": 1
+    },
+    "complexityThresholds": {
+      "direct": 3,
+      "tier1": 6,
+      "tier2": 8,
+      "tier3": 10
+    },
+    "routingWeights": {
+      "scope": 0.3,
+      "technical": 0.3,
+      "domain": 0.25,
+      "risk": 0.15
+    },
+    "confidenceThreshold": 0.7,
+    "enableAlternativeRouting": true
+  },
+  "specialists": {
+    "tier1": [
+      {
+        "id": "architecture-generalist",
+        "name": "Architecture Generalist",
+        "domain": "architecture",
+        "expertise": [
+          "microservices architecture",
+          "design patterns",
+          "scalability planning",
+          "system integration"
+        ],
+        "maxComplexityHandled": 7,
+        "enabled": true
+      },
+      {
+        "id": "security-generalist",
+        "name": "Security Generalist", 
+        "domain": "security",
+        "expertise": [
+          "authentication",
+          "authorization",
+          "data protection",
+          "oauth",
+          "jwt",
+          "api security"
+        ],
+        "maxComplexityHandled": 6,
+        "enabled": true
+      },
+      {
+        "id": "performance-generalist",
+        "name": "Performance Generalist",
+        "domain": "performance",
+        "expertise": [
+          "performance optimization",
+          "caching strategies",
+          "basic profiling",
+          "monitoring setup"
+        ],
+        "maxComplexityHandled": 6,
+        "enabled": true
+      },
+      {
+        "id": "data-generalist",
+        "name": "Data Generalist",
+        "domain": "data",
+        "expertise": [
+          "database schema design",
+          "data modeling",
+          "basic analytics",
+          "data migration"
+        ],
+        "maxComplexityHandled": 6,
+        "enabled": true
+      },
+      {
+        "id": "integration-generalist",
+        "name": "Integration Generalist",
+        "domain": "integration",
+        "expertise": [
+          "REST API design",
+          "GraphQL implementation",
+          "third-party integration",
+          "service communication"
+        ],
+        "maxComplexityHandled": 6,
+        "enabled": true
+      },
+      {
+        "id": "frontend-generalist",
+        "name": "Frontend Generalist",
+        "domain": "frontend",
+        "expertise": [
+          "component architecture",
+          "state management",
+          "responsive design",
+          "basic accessibility"
+        ],
+        "maxComplexityHandled": 6,
+        "enabled": true
+      }
+    ],
+    "tier2": [
+      {
+        "id": "database-specialist",
+        "name": "Database Specialist",
+        "domain": "database",
+        "expertise": [
+          "advanced query optimization",
+          "database performance tuning",
+          "complex data modeling",
+          "database clustering/sharding"
+        ],
+        "prerequisites": ["data-generalist-consultation"],
+        "maxComplexityHandled": 8,
+        "enabled": true
+      },
+      {
+        "id": "api-design-specialist",
+        "name": "API Design Specialist",
+        "domain": "api-design",
+        "expertise": [
+          "advanced API design patterns",
+          "API versioning strategies",
+          "complex GraphQL schemas",
+          "API performance optimization"
+        ],
+        "prerequisites": ["integration-generalist-consultation"],
+        "maxComplexityHandled": 8,
+        "enabled": true
+      },
+      {
+        "id": "auth-systems-specialist",
+        "name": "Auth Systems Specialist",
+        "domain": "auth-systems",
+        "expertise": [
+          "advanced authentication flows",
+          "SSO implementation",
+          "multi-factor authentication",
+          "identity federation"
+        ],
+        "prerequisites": ["security-generalist-consultation"],
+        "maxComplexityHandled": 8,
+        "enabled": true
+      },
+      {
+        "id": "performance-optimization-specialist",
+        "name": "Performance Optimization Specialist",
+        "domain": "performance-optimization",
+        "expertise": [
+          "advanced profiling techniques",
+          "memory optimization",
+          "CPU optimization",
+          "performance monitoring systems"
+        ],
+        "prerequisites": ["performance-generalist-consultation"],
+        "maxComplexityHandled": 8,
+        "enabled": true
+      },
+      {
+        "id": "ml-integration-specialist",
+        "name": "ML Integration Specialist",
+        "domain": "ml-integration",
+        "expertise": [
+          "ML model integration",
+          "AI API implementation",
+          "model serving architecture",
+          "ML pipeline design"
+        ],
+        "prerequisites": ["data-generalist-consultation"],
+        "maxComplexityHandled": 8,
+        "enabled": true
+      },
+      {
+        "id": "testing-strategy-specialist",
+        "name": "Testing Strategy Specialist",
+        "domain": "testing-strategy",
+        "expertise": [
+          "advanced testing strategies",
+          "CI/CD pipeline design",
+          "test automation frameworks",
+          "quality assurance processes"
+        ],
+        "prerequisites": ["architecture-generalist-consultation"],
+        "maxComplexityHandled": 8,
+        "enabled": true
+      }
+    ],
+    "tier3": [
+      {
+        "id": "system-architect",
+        "name": "System Architect",
+        "domain": "system-architecture",
+        "expertise": [
+          "enterprise architecture patterns",
+          "cross-system integration",
+          "technology strategy",
+          "architectural governance"
+        ],
+        "prerequisites": ["tier2-specialist-consultation"],
+        "maxComplexityHandled": 10,
+        "enabled": true
+      },
+      {
+        "id": "integration-architect",
+        "name": "Integration Architect",
+        "domain": "integration-architecture",
+        "expertise": [
+          "service mesh architecture",
+          "enterprise integration patterns",
+          "event-driven architecture",
+          "distributed system design"
+        ],
+        "prerequisites": ["tier2-specialist-consultation"],
+        "maxComplexityHandled": 10,
+        "enabled": true
+      },
+      {
+        "id": "scale-architect",
+        "name": "Scale Architect",
+        "domain": "scale-architecture",
+        "expertise": [
+          "horizontal scaling strategies",
+          "distributed system patterns",
+          "load balancing architecture",
+          "fault tolerance design"
+        ],
+        "prerequisites": ["tier2-specialist-consultation"],
+        "maxComplexityHandled": 10,
+        "enabled": true
+      },
+      {
+        "id": "security-architect",
+        "name": "Security Architect",
+        "domain": "security-architecture",
+        "expertise": [
+          "security architecture design",
+          "compliance framework implementation",
+          "advanced threat modeling",
+          "security governance"
+        ],
+        "prerequisites": ["tier2-specialist-consultation"],
+        "maxComplexityHandled": 10,
+        "enabled": true
+      },
+      {
+        "id": "data-architect",
+        "name": "Data Architect",
+        "domain": "data-architecture",
+        "expertise": [
+          "data architecture design",
+          "data governance frameworks",
+          "data lake/warehouse architecture",
+          "master data management"
+        ],
+        "prerequisites": ["tier2-specialist-consultation"],
+        "maxComplexityHandled": 10,
+        "enabled": true
+      },
+      {
+        "id": "governance-architect",
+        "name": "Governance Architect",
+        "domain": "governance-architecture",
+        "expertise": [
+          "governance framework design",
+          "policy enforcement systems",
+          "compliance automation",
+          "risk management"
+        ],
+        "prerequisites": ["tier2-specialist-consultation"],
+        "maxComplexityHandled": 10,
+        "enabled": true
+      }
+    ]
+  },
+  "quality": {
+    "validationCheckpoints": true,
+    "consistencyVerification": true,
+    "performanceTracking": true,
+    "continuousImprovement": true,
+    "qualityThresholds": {
+      "minimal": 0.6,
+      "acceptable": 0.75,
+      "excellent": 0.9
+    },
+    "validationRules": {
+      "minExpertiseAlignment": 0.7,
+      "minRecommendationQuality": 0.75,
+      "minImplementationViability": 0.7,
+      "maxRiskLevel": "medium",
+      "minCompleteness": 0.8,
+      "minConsistency": 0.8,
+      "minStakeholderValue": 0.75
+    },
+    "metricWeights": {
+      "overall": {
+        "expertiseAlignment": 0.15,
+        "recommendationQuality": 0.25,
+        "implementationViability": 0.20,
+        "riskAssessment": 0.15,
+        "completeness": 0.10,
+        "consistency": 0.10,
+        "stakeholderValue": 0.05
+      }
+    }
+  },
+  "context": {
+    "storageEnabled": true,
+    "learningEnabled": true,
+    "cacheExpiration": "24h",
+    "patternRecognition": true,
+    "contextStoragePath": "./context",
+    "maxCacheSize": 1000,
+    "persistenceEnabled": true
+  },
+  "recovery": {
+    "errorDetection": true,
+    "autoEscalation": true,
+    "feedbackIntegration": true,
+    "learningUpdates": true,
+    "detectionThresholds": {
+      "implementationFailureScore": 0.3,
+      "userSatisfactionThreshold": 0.6,
+      "qualityThreshold": 0.7,
+      "timeoutThreshold": 86400000
+    },
+    "monitoringEnabled": true
+  },
+  "protocols": {
+    "handoffValidation": true,
+    "escalationCriteria": {
+      "complexityThreshold": 8,
+      "riskThreshold": "high",
+      "qualityThreshold": 0.6,
+      "stakeholderCount": 5
+    },
+    "communicationChannels": {
+      "primary": "architecture-review-meetings",
+      "secondary": "async-documentation-review",
+      "escalation": "architecture-board-review"
+    },
+    "documentationStandards": {
+      "format": "architectural-decision-records",
+      "templates": "standardized-consultation-templates",
+      "storage": "centralized-architecture-repository",
+      "versioning": "git-based-version-control"
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "metricsCollection": true,
+    "performanceTracking": true,
+    "errorLogging": true,
+    "analyticsEnabled": true,
+    "dashboardEnabled": false,
+    "alertingEnabled": false
+  },
+  "integrations": {
+    "externalSystems": [],
+    "webhooks": {
+      "enabled": false,
+      "endpoints": []
+    },
+    "apiIntegration": {
+      "enabled": false,
+      "baseUrl": null,
+      "authentication": null
+    }
+  },
+  "features": {
+    "asyncProcessing": true,
+    "batchProcessing": false,
+    "realTimeUpdates": false,
+    "distributedProcessing": false,
+    "autoScaling": false
+  },
+  "environment": {
+    "development": {
+      "logLevel": "debug",
+      "enableExperimentalFeatures": true,
+      "mockExternalServices": true
+    },
+    "staging": {
+      "logLevel": "info",
+      "enableExperimentalFeatures": false,
+      "mockExternalServices": false
+    },
+    "production": {
+      "logLevel": "warn",
+      "enableExperimentalFeatures": false,
+      "mockExternalServices": false
+    }
+  }
+}

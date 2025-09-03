@@ -1,0 +1,466 @@
+{
+  "name": "LinkedIn Automation - Response Handling & Routing",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/webhook/lemlist-response",
+        "responseMode": "responseNode",
+        "options": {
+          "noResponseBody": false
+        }
+      },
+      "id": "response-webhook",
+      "name": "Lemlist Response Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "lemlist-response-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and classify response from Lemlist\nconst webhook = $input.first();\nconst data = webhook.json.body || webhook.json;\n\n// Extract response data\nconst responseText = (data.message || data.reply || '').toLowerCase();\nconst email = data.email || data.leadEmail;\nconst campaignId = data.campaignId;\nconst responseType = data.eventType || data.event_type;\n\n// Classify response sentiment and intent\nfunction classifyResponse(text) {\n  if (!text || text.length < 5) return 'unknown';\n  \n  const positiveIndicators = ['yes', 'interested', 'sounds good', 'let\\'s talk', 'schedule', 'call', 'meeting', 'demo', 'learn more'];\n  const negativeIndicators = ['no', 'not interested', 'remove', 'unsubscribe', 'stop', 'don\\'t contact'];\n  const questionIndicators = ['?', 'how', 'what', 'when', 'where', 'why', 'can you', 'tell me more'];\n  const objectionIndicators = ['busy', 'later', 'not now', 'maybe', 'not sure', 'need to think'];\n  \n  if (positiveIndicators.some(indicator => text.includes(indicator))) {\n    return 'positive';\n  } else if (negativeIndicators.some(indicator => text.includes(indicator))) {\n    return 'negative';\n  } else if (questionIndicators.some(indicator => text.includes(indicator))) {\n    return 'question';\n  } else if (objectionIndicators.some(indicator => text.includes(indicator))) {\n    return 'objection';\n  }\n  \n  return 'neutral';\n}\n\n// Extract key information\nconst classification = classifyResponse(responseText);\nconst wordCount = responseText.split(' ').length;\nconst hasContactInfo = /\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b|\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b/.test(responseText);\nconst urgencyWords = ['urgent', 'asap', 'immediately', 'soon', 'quickly'];\nconst hasUrgency = urgencyWords.some(word => responseText.includes(word));\n\nreturn [{\n  json: {\n    email: email,\n    campaign_id: campaignId,\n    response_text: data.message || data.reply,\n    response_type: responseType,\n    classification: classification,\n    sentiment: classification,\n    word_count: wordCount,\n    has_contact_info: hasContactInfo,\n    has_urgency: hasUrgency,\n    processing_timestamp: new Date().toISOString(),\n    requires_human_review: ['question', 'objection'].includes(classification) || hasUrgency\n  }\n}];"
+      },
+      "id": "classify-response",
+      "name": "Classify Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "positive-response",
+              "leftValue": "={{ $json.classification }}",
+              "rightValue": "positive",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-positive",
+      "name": "Filter Positive Responses",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 160]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "question-response",
+              "leftValue": "={{ $json.classification }}",
+              "rightValue": "question",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-questions",
+      "name": "Filter Questions",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "objection-response",
+              "leftValue": "={{ $json.classification }}",
+              "rightValue": "objection",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-objections",
+      "name": "Filter Objections",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 440]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "negative-response",
+              "leftValue": "={{ $json.classification }}",
+              "rightValue": "negative",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-negative",
+      "name": "Filter Negative Responses",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 580]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  text: `🎉 Positive Response Received!`,\n  blocks: [\n    {\n      type: 'section',\n      text: {\n        type: 'mrkdwn',\n        text: `*Prospect:* ${$json.email}\\n*Response:* ${$json.response_text}\\n*Campaign:* ${$json.campaign_id}`\n      }\n    },\n    {\n      type: 'actions',\n      elements: [\n        {\n          type: 'button',\n          text: { type: 'plain_text', text: 'Schedule Call' },\n          url: `https://calendly.com/your-link?email=${$json.email}`\n        }\n      ]\n    }\n  ]\n}) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "notify-sales-positive",
+      "name": "Notify Sales Team",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 160]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-haiku-20240307",
+        "prompt": "Generate a helpful response to this prospect's question:\n\nProspect Email: {{ $json.email }}\nOriginal Question: {{ $json.response_text }}\n\nContext: This is a B2B lead who responded to our LinkedIn outreach campaign.\n\nProvide a professional, helpful response that:\n1. Answers their question directly\n2. Provides value\n3. Includes a soft call-to-action\n4. Keeps the conversation moving forward\n5. Is under 150 words\n\nReturn only the response text, no additional formatting.",
+        "options": {
+          "temperature": 0.6,
+          "maxTokens": 500
+        }
+      },
+      "id": "generate-question-response",
+      "name": "Generate AI Response",
+      "type": "n8n-nodes-base.ai",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "sendMessage",
+        "campaignId": "{{ $json.campaign_id }}",
+        "email": "{{ $json.email }}",
+        "subject": "Re: Your question",
+        "content": "{{ $json.ai_response || $json.response }}",
+        "sendImmediately": true
+      },
+      "id": "send-ai-response",
+      "name": "Send AI Response",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  text: `🤔 Objection Received - Needs Handling`,\n  blocks: [\n    {\n      type: 'section',\n      text: {\n        type: 'mrkdwn',\n        text: `*Prospect:* ${$json.email}\\n*Objection:* ${$json.response_text}\\n*Campaign:* ${$json.campaign_id}\\n*Urgency:* ${$json.has_urgency ? 'High' : 'Normal'}`\n      }\n    },\n    {\n      type: 'actions',\n      elements: [\n        {\n          type: 'button',\n          text: { type: 'plain_text', text: 'Handle Objection' },\n          url: `https://your-crm.com/lead/${encodeURIComponent($json.email)}`\n        }\n      ]\n    }\n  ]\n}) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "notify-objection-handler",
+      "name": "Notify Objection Handler",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 440]
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "updateCustomFields",
+        "email": "={{ $json.email }}",
+        "customFields": {
+          "lead_status": "unsubscribed",\n          \"response_type\": \"negative\",\n          \"unsubscribe_reason\": \"{{ $json.response_text }}\",\n          \"unsubscribe_date\": \"{{ $json.processing_timestamp }}\"\n        }\n      },\n      \"id\": \"mark-unsubscribed\",\n      \"name\": \"Mark as Unsubscribed\",\n      \"type\": \"n8n-nodes-base.lemlist\",\n      \"typeVersion\": 1,\n      \"position\": [900, 580]\n    },\n    {\n      \"parameters\": {\n        \"resource\": \"sheet\",\n        \"operation\": \"update\",\n        \"documentId\": {\n          \"__rl\": true,\n          \"mode\": \"list\",\n          \"value\": \"YOUR_GOOGLE_SHEET_ID\"\n        },\n        \"sheetName\": {\n          \"__rl\": true,\n          \"mode\": \"list\",\n          \"value\": \"Prospects\"\n        },\n        \"columnToMatchOn\": \"email\",\n        \"valueToMatchOn\": \"={{ $json.email }}\",\n        \"fieldsToUpdate\": {\n          \"values\": [\n            {\n              \"column\": \"response_status\",\n              \"value\": \"{{ $json.classification }}\"\n            },\n            {\n              \"column\": \"response_date\",\n              \"value\": \"{{ $json.processing_timestamp }}\"\n            },\n            {\n              \"column\": \"response_text\",\n              \"value\": \"{{ $json.response_text }}\"\n            },\n            {\n              \"column\": \"requires_follow_up\",\n              \"value\": \"{{ $json.requires_human_review ? 'yes' : 'no' }}\"\n            }\n          ]\n        }\n      },\n      \"id\": \"update-response-status\",\n      \"name\": \"Update Response Status\",\n      \"type\": \"n8n-nodes-base.googleSheets\",\n      \"typeVersion\": 4,\n      \"position\": [1340, 360]\n    },\n    {\n      \"parameters\": {\n        \"respondWith\": \"json\",\n        \"responseBody\": \"={{ JSON.stringify({ status: 'processed', classification: $json.classification, email: $json.email, action_taken: $json.action_taken || 'logged', timestamp: $json.processing_timestamp }) }}\"\n      },\n      \"id\": \"response-webhook-reply\",\n      \"name\": \"Response Webhook Reply\",\n      \"type\": \"n8n-nodes-base.respondToWebhook\",\n      \"typeVersion\": 1,\n      \"position\": [1560, 360]\n    },\n    {\n      \"parameters\": {\n        \"jsCode\": \"// Response handling analytics\\nconst items = $input.all();\\nconst analytics = {\\n  total_responses: items.length,\\n  positive_responses: items.filter(i => i.json.classification === 'positive').length,\\n  questions: items.filter(i => i.json.classification === 'question').length,\\n  objections: items.filter(i => i.json.classification === 'objection').length,\\n  negative_responses: items.filter(i => i.json.classification === 'negative').length,\\n  response_rate: {\\n    positive: Math.round((items.filter(i => i.json.classification === 'positive').length / items.length) * 100),\\n    engagement: Math.round((items.filter(i => ['positive', 'question', 'objection'].includes(i.json.classification)).length / items.length) * 100)\\n  },\\n  avg_response_length: Math.round(items.reduce((sum, i) => sum + (i.json.word_count || 0), 0) / items.length),\\n  urgent_responses: items.filter(i => i.json.has_urgency).length,\\n  human_review_needed: items.filter(i => i.json.requires_human_review).length,\\n  timestamp: new Date().toISOString()\\n};\\n\\nconsole.log('Response Handling Analytics:', JSON.stringify(analytics, null, 2));\\n\\nreturn [{ json: analytics }];\"\n      },\n      \"id\": \"response-analytics\",\n      \"name\": \"Response Analytics\",\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 2,\n      \"position\": [1780, 360]\n    }\n  ],\n  \"connections\": {\n    \"Lemlist Response Webhook\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Classify Response\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Classify Response\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Filter Positive Responses\",\n            \"type\": \"main\",\n            \"index\": 0\n          },\n          {\n            \"node\": \"Filter Questions\",\n            \"type\": \"main\",\n            \"index\": 0\n          },\n          {\n            \"node\": \"Filter Objections\",\n            \"type\": \"main\",\n            \"index\": 0\n          },\n          {\n            \"node\": \"Filter Negative Responses\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Filter Positive Responses\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Notify Sales Team\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Filter Questions\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Generate AI Response\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Filter Objections\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Notify Objection Handler\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Filter Negative Responses\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Mark as Unsubscribed\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Notify Sales Team\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Update Response Status\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Generate AI Response\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Send AI Response\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Send AI Response\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Update Response Status\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Notify Objection Handler\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Update Response Status\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Mark as Unsubscribed\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Update Response Status\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Update Response Status\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Response Webhook Reply\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Response Webhook Reply\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Response Analytics\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"pinData\": {},\n  \"settings\": {\n    \"executionOrder\": \"v1\"\n  },\n  \"staticData\": null,\n  \"tags\": [\n    {\n      \"createdAt\": \"2025-09-03T14:55:00.000Z\",\n      \"updatedAt\": \"2025-09-03T14:55:00.000Z\",\n      \"id\": \"linkedin-automation\",\n      \"name\": \"LinkedIn Automation\"\n    }\n  ],\n  \"triggerCount\": 1,\n  \"updatedAt\": \"2025-09-03T14:55:00.000Z\",\n  \"versionId\": \"initial\"\n}"
+      },
+      "id": "mark-unsubscribed",
+      "name": "Mark as Unsubscribed",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [900, 580]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Prospects"
+        },
+        "columnToMatchOn": "email",
+        "valueToMatchOn": "={{ $json.email }}",
+        "fieldsToUpdate": {
+          "values": [
+            {
+              "column": "response_status",
+              "value": "{{ $json.classification }}"
+            },
+            {
+              "column": "response_date",
+              "value": "{{ $json.processing_timestamp }}"
+            },
+            {
+              "column": "response_text",
+              "value": "{{ $json.response_text }}"
+            },
+            {
+              "column": "requires_follow_up",
+              "value": "{{ $json.requires_human_review ? 'yes' : 'no' }}"
+            }
+          ]
+        }
+      },
+      "id": "update-response-status",
+      "name": "Update Response Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1340, 360]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'processed', classification: $json.classification, email: $json.email, action_taken: $json.action_taken || 'logged', timestamp: $json.processing_timestamp }) }}"
+      },
+      "id": "response-webhook-reply",
+      "name": "Response Webhook Reply",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1560, 360]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Response handling analytics\nconst items = $input.all();\nconst analytics = {\n  total_responses: items.length,\n  positive_responses: items.filter(i => i.json.classification === 'positive').length,\n  questions: items.filter(i => i.json.classification === 'question').length,\n  objections: items.filter(i => i.json.classification === 'objection').length,\n  negative_responses: items.filter(i => i.json.classification === 'negative').length,\n  response_rate: {\n    positive: Math.round((items.filter(i => i.json.classification === 'positive').length / items.length) * 100),\n    engagement: Math.round((items.filter(i => ['positive', 'question', 'objection'].includes(i.json.classification)).length / items.length) * 100)\n  },\n  avg_response_length: Math.round(items.reduce((sum, i) => sum + (i.json.word_count || 0), 0) / items.length),\n  urgent_responses: items.filter(i => i.json.has_urgency).length,\n  human_review_needed: items.filter(i => i.json.requires_human_review).length,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('Response Handling Analytics:', JSON.stringify(analytics, null, 2));\n\nreturn [{ json: analytics }];"
+      },
+      "id": "response-analytics",
+      "name": "Response Analytics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 360]
+    }
+  ],
+  "connections": {
+    "Lemlist Response Webhook": {
+      "main": [
+        [
+          {
+            "node": "Classify Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Response": {
+      "main": [
+        [
+          {
+            "node": "Filter Positive Responses",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Questions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Objections",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Negative Responses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Positive Responses": {
+      "main": [
+        [
+          {
+            "node": "Notify Sales Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Questions": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Objections": {
+      "main": [
+        [
+          {
+            "node": "Notify Objection Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Negative Responses": {
+      "main": [
+        [
+          {
+            "node": "Mark as Unsubscribed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Sales Team": {
+      "main": [
+        [
+          {
+            "node": "Update Response Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Response": {
+      "main": [
+        [
+          {
+            "node": "Send AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send AI Response": {
+      "main": [
+        [
+          {
+            "node": "Update Response Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Objection Handler": {
+      "main": [
+        [
+          {
+            "node": "Update Response Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Unsubscribed": {
+      "main": [
+        [
+          {
+            "node": "Update Response Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Response Status": {
+      "main": [
+        [
+          {
+            "node": "Response Webhook Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Webhook Reply": {
+      "main": [
+        [
+          {
+            "node": "Response Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-09-03T14:55:00.000Z",
+      "updatedAt": "2025-09-03T14:55:00.000Z",
+      "id": "linkedin-automation",
+      "name": "LinkedIn Automation"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-09-03T14:55:00.000Z",
+  "versionId": "initial"
+}

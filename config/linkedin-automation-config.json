@@ -1,0 +1,73 @@
+{
+  "system": {
+    "name": "LinkedIn Automation System",
+    "version": "1.0.0",
+    "environment": "production"
+  },
+  "lemlist": {
+    "apiUrl": "https://api.lemlist.com/api",
+    "teamId": "tea_iCFKHJZYanhskw54r",
+    "rateLimits": {
+      "requests_per_minute": 300,
+      "requests_per_hour": 10000
+    },
+    "campaigns": {
+      "main": "ctp_kniL5tYjDtyX3KFwr",
+      "tier1": "ctp_kniL5tYjDtyX3KFwr",
+      "tier2": "ctp_kniL5tYjDtyX3KFwr", 
+      "tier3": "ctp_kniL5tYjDtyX3KFwr"
+    }
+  },
+  "apify": {
+    "actorId": "agent-x/linkedin-multi-functional-scraper",
+    "maxConcurrency": 5,
+    "timeout": 300,
+    "memoryMbytes": 2048,
+    "residential_proxy": true
+  },
+  "scraping": {
+    "data_points": [
+      "profile_summary",
+      "recent_posts",
+      "recent_activity",
+      "company_info",
+      "experience",
+      "skills"
+    ],
+    "cache_duration": "24h",
+    "max_posts_per_profile": 10,
+    "selective_scraping": true
+  },
+  "ai": {
+    "provider": "claude",
+    "model": "claude-3-sonnet-20240229",
+    "max_tokens": 2000,
+    "temperature": 0.7,
+    "message_templates": {
+      "sequence_length": 3,
+      "delays": [0, 2, 5]
+    }
+  },
+  "cost_optimization": {
+    "caching_enabled": true,
+    "cache_hit_target": 0.4,
+    "bulk_processing": true,
+    "max_batch_size": 50,
+    "priority_scraping": true,
+    "residential_proxy_rotation": true
+  },
+  "volume_handling": {
+    "monthly_target": 3000,
+    "daily_target": 100,
+    "concurrent_workflows": 3,
+    "queue_management": true
+  },
+  "quality_control": {
+    "personalization_score_threshold": 0.7,
+    "message_length_limits": {
+      "min": 50,
+      "max": 300
+    },
+    "compliance_check": true
+  }
+}

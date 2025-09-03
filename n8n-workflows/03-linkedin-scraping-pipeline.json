@@ -1,0 +1,389 @@
+{
+  "name": "LinkedIn Automation - Profile Scraping Pipeline",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/webhook/linkedin-scraping-trigger",
+        "responseMode": "responseNode",
+        "options": {
+          "noResponseBody": false
+        }
+      },
+      "id": "scraping-webhook",
+      "name": "Scraping Trigger Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "linkedin-scraping-trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check cache for existing profile data\nconst webhook = $input.first();\nconst data = webhook.json.body || webhook.json;\n\nconst linkedinId = data.linkedin_id;\nconst email = data.email;\n\n// Check if we have cached data (24 hour cache)\nconst cacheKey = `linkedin_profile_${linkedinId}`;\nconst cacheExpiry = 24 * 60 * 60 * 1000; // 24 hours\n\n// In a real implementation, you'd check Redis or file cache\n// For now, we'll simulate cache logic\nconst now = Date.now();\nconst lastScraped = data.last_scraped ? new Date(data.last_scraped).getTime() : 0;\nconst isCacheValid = (now - lastScraped) < cacheExpiry;\n\n// Determine if scraping is needed\nconst needsScraping = !isCacheValid || !data.profile_data;\n\nreturn [{\n  json: {\n    ...data,\n    cache_key: cacheKey,\n    cache_valid: isCacheValid,\n    needs_scraping: needsScraping,\n    cache_check_timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "cache-check",
+      "name": "Cache Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "needs-scraping",
+              "leftValue": "={{ $json.needs_scraping }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-needs-scraping",
+      "name": "Filter Needs Scraping",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare Apify LinkedIn scraper input with cost optimization\nconst data = $input.first().json;\n\n// Selective scraping - only get what we need\nconst scrapingInput = {\n  profileUrls: [data.linkedin_url],\n  resultsType: \"profile\",\n  includePosts: true,\n  maxPostCount: 10, // Limit posts to control cost\n  includeConnections: false, // Skip connections to save cost\n  includeCompanyDetails: true,\n  \n  // Proxy configuration for residential proxy\n  proxyConfiguration: {\n    useResidentialProxies: true,\n    countryCode: \"US\"\n  },\n  \n  // Performance optimization\n  maxConcurrency: 1, // Lower concurrency to avoid blocking\n  requestDelay: 2000, // 2 second delay between requests\n  pageTimeout: 30000, // 30 second timeout\n  \n  // Memory optimization\n  memoryMbytes: 2048\n};\n\nreturn [{\n  json: {\n    ...data,\n    apify_input: scrapingInput,\n    scraping_timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "prepare-scraping-input",
+      "name": "Prepare Apify Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "resource": "actor",
+        "operation": "run",
+        "actorId": "agent-x/linkedin-multi-functional-scraper",
+        "input": "={{ JSON.stringify($json.apify_input) }}",
+        "waitForFinish": true,
+        "timeout": 600,
+        "options": {
+          "memoryMbytes": 2048
+        }
+      },
+      "id": "run-apify-scraper",
+      "name": "Run LinkedIn Scraper",
+      "type": "n8n-nodes-base.apify",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process and clean scraped data\nconst scrapingResult = $input.first().json;\nconst originalData = scrapingResult.input_data || {};\n\n// Extract relevant data from Apify result\nconst profileData = scrapingResult.defaultDatasetItemsFlat && scrapingResult.defaultDatasetItemsFlat[0] ? scrapingResult.defaultDatasetItemsFlat[0] : {};\n\n// Clean and structure the data\nconst cleanedData = {\n  profile: {\n    name: profileData.name || '',\n    headline: profileData.headline || '',\n    summary: profileData.summary || '',\n    location: profileData.location || '',\n    industry: profileData.industry || '',\n    experience: profileData.experience || [],\n    education: profileData.education || [],\n    skills: profileData.skills || [],\n    company_name: profileData.company || ''\n  },\n  posts: (profileData.posts || []).slice(0, 10).map(post => ({\n    text: post.text || '',\n    date: post.date || '',\n    engagement: post.likes + post.comments + post.shares || 0,\n    type: post.type || 'post'\n  })),\n  activity: {\n    recent_posts_count: (profileData.posts || []).length,\n    last_activity: profileData.lastActivityDate || '',\n    engagement_rate: profileData.engagementRate || 0\n  },\n  scraping_metadata: {\n    scraped_at: new Date().toISOString(),\n    scraper_version: 'agent-x/linkedin-multi-functional-scraper',\n    cost_optimized: true,\n    data_points_collected: Object.keys(profileData).length\n  }\n};\n\nreturn [{\n  json: {\n    email: originalData.email,\n    linkedin_id: originalData.linkedin_id,\n    linkedin_url: originalData.linkedin_url,\n    profile_data: cleanedData,\n    scraping_success: true,\n    processing_timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-scraped-data",
+      "name": "Process Scraped Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Prospects"
+        },
+        "columnToMatchOn": "email",
+        "valueToMatchOn": "={{ $json.email }}",
+        "fieldsToUpdate": {
+          "values": [
+            {
+              "column": "scraping_status",
+              "value": "completed"
+            },
+            {
+              "column": "profile_summary",
+              "value": "={{ $json.profile_data.profile.summary }}"
+            },
+            {
+              "column": "recent_posts_count",
+              "value": "={{ $json.profile_data.activity.recent_posts_count }}"
+            },
+            {
+              "column": "last_scraped",
+              "value": "={{ $json.processing_timestamp }}"
+            },
+            {
+              "column": "personalization_status",
+              "value": "pending"
+            }
+          ]
+        }
+      },
+      "id": "update-scraping-status",
+      "name": "Update Scraping Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/ai-personalization-trigger",
+        "sendBody": true,\n        \"specifyBody\": \"json\",\n        \"jsonBody\": \"={{ JSON.stringify($json) }}\",\n        \"options\": {\n          \"timeout\": 30000\n        }\n      },\n      \"id\": \"trigger-ai-personalization\",\n      \"name\": \"Trigger AI Personalization\",\n      \"type\": \"n8n-nodes-base.httpRequest\",\n      \"typeVersion\": 4.2,\n      \"position\": [1780, 300]\n    },\n    {\n      \"parameters\": {\n        \"conditions\": {\n          \"options\": {\n            \"caseSensitive\": true,\n            \"leftValue\": \"\",\n            \"typeValidation\": \"strict\"\n          },\n          \"conditions\": [\n            {\n              \"id\": \"cache-valid\",\n              \"leftValue\": \"={{ $json.cache_valid }}\",\n              \"rightValue\": true,\n              \"operator\": {\n                \"type\": \"boolean\",\n                \"operation\": \"true\"\n              }\n            }\n          ],\n          \"combinator\": \"and\"\n        },\n        \"options\": {}\n      },\n      \"id\": \"filter-cache-hit\",\n      \"name\": \"Filter Cache Hit\",\n      \"type\": \"n8n-nodes-base.filter\",\n      \"typeVersion\": 2,\n      \"position\": [680, 460]\n    },\n    {\n      \"parameters\": {\n        \"jsCode\": \"// Handle cache hit - use existing data\\nconst data = $input.first().json;\\n\\n// Log cache hit for cost optimization tracking\\nconsole.log('Cache hit for:', data.linkedin_id);\\n\\n// Proceed directly to AI personalization with cached data\\nreturn [{\\n  json: {\\n    ...data,\\n    cache_hit: true,\\n    cost_saved: 0.05, // Estimated cost saved per cache hit\\n    processing_timestamp: new Date().toISOString()\\n  }\\n}];\"\n      },\n      \"id\": \"handle-cache-hit\",\n      \"name\": \"Handle Cache Hit\",\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 2,\n      \"position\": [900, 460]\n    },\n    {\n      \"parameters\": {\n        \"method\": \"POST\",\n        \"url\": \"http://localhost:5678/webhook/ai-personalization-trigger\",\n        \"sendBody\": true,\n        \"specifyBody\": \"json\",\n        \"jsonBody\": \"={{ JSON.stringify($json) }}\",\n        \"options\": {\n          \"timeout\": 30000\n        }\n      },\n      \"id\": \"trigger-ai-from-cache\",\n      \"name\": \"Trigger AI (Cached Data)\",\n      \"type\": \"n8n-nodes-base.httpRequest\",\n      \"typeVersion\": 4.2,\n      \"position\": [1120, 460]\n    },\n    {\n      \"parameters\": {\n        \"respondWith\": \"json\",\n        \"responseBody\": \"={{ JSON.stringify({ status: 'processing', email: $json.email, cache_hit: $json.cache_hit || false, timestamp: $json.processing_timestamp }) }}\"\n      },\n      \"id\": \"scraping-response\",\n      \"name\": \"Scraping Response\",\n      \"type\": \"n8n-nodes-base.respondToWebhook\",\n      \"typeVersion\": 1,\n      \"position\": [2000, 380]\n    },\n    {\n      \"parameters\": {\n        \"jsCode\": \"// Cost and performance analytics\\nconst items = $input.all();\\nconst analytics = {\\n  total_requests: items.length,\\n  cache_hits: items.filter(i => i.json.cache_hit).length,\\n  scraping_requests: items.filter(i => i.json.scraping_success).length,\\n  cache_hit_rate: items.filter(i => i.json.cache_hit).length / items.length,\\n  estimated_cost_saved: items.filter(i => i.json.cache_hit).length * 0.05,\\n  timestamp: new Date().toISOString()\\n};\\n\\nconsole.log('Scraping Analytics:', JSON.stringify(analytics, null, 2));\\n\\nreturn [{ json: analytics }];\"\n      },\n      \"id\": \"scraping-analytics\",\n      \"name\": \"Scraping Analytics\",\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 2,\n      \"position\": [2220, 380]\n    }\n  ],\n  \"connections\": {\n    \"Scraping Trigger Webhook\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Cache Check\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Cache Check\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Filter Needs Scraping\",\n            \"type\": \"main\",\n            \"index\": 0\n          },\n          {\n            \"node\": \"Filter Cache Hit\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Filter Needs Scraping\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Prepare Apify Input\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Prepare Apify Input\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Run LinkedIn Scraper\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Run LinkedIn Scraper\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Process Scraped Data\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Process Scraped Data\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Update Scraping Status\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Update Scraping Status\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Trigger AI Personalization\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Trigger AI Personalization\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Scraping Response\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Filter Cache Hit\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Handle Cache Hit\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Handle Cache Hit\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Trigger AI (Cached Data)\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Trigger AI (Cached Data)\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Scraping Response\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Scraping Response\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Scraping Analytics\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"pinData\": {},\n  \"settings\": {\n    \"executionOrder\": \"v1\"\n  },\n  \"staticData\": null,\n  \"tags\": [\n    {\n      \"createdAt\": \"2025-09-03T14:40:00.000Z\",\n      \"updatedAt\": \"2025-09-03T14:40:00.000Z\",\n      \"id\": \"linkedin-automation\",\n      \"name\": \"LinkedIn Automation\"\n    }\n  ],\n  \"triggerCount\": 1,\n  \"updatedAt\": \"2025-09-03T14:40:00.000Z\",\n  \"versionId\": \"initial\"\n}"
+      },
+      "id": "trigger-ai-personalization",
+      "name": "Trigger AI Personalization",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cache-valid",
+              "leftValue": "={{ $json.cache_valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-cache-hit",
+      "name": "Filter Cache Hit",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 460]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle cache hit - use existing data\nconst data = $input.first().json;\n\n// Log cache hit for cost optimization tracking\nconsole.log('Cache hit for:', data.linkedin_id);\n\n// Proceed directly to AI personalization with cached data\nreturn [{\n  json: {\n    ...data,\n    cache_hit: true,\n    cost_saved: 0.05, // Estimated cost saved per cache hit\n    processing_timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "handle-cache-hit",
+      "name": "Handle Cache Hit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/ai-personalization-trigger",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "trigger-ai-from-cache",
+      "name": "Trigger AI (Cached Data)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 460]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'processing', email: $json.email, cache_hit: $json.cache_hit || false, timestamp: $json.processing_timestamp }) }}"
+      },
+      "id": "scraping-response",
+      "name": "Scraping Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2000, 380]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cost and performance analytics\nconst items = $input.all();\nconst analytics = {\n  total_requests: items.length,\n  cache_hits: items.filter(i => i.json.cache_hit).length,\n  scraping_requests: items.filter(i => i.json.scraping_success).length,\n  cache_hit_rate: items.filter(i => i.json.cache_hit).length / items.length,\n  estimated_cost_saved: items.filter(i => i.json.cache_hit).length * 0.05,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('Scraping Analytics:', JSON.stringify(analytics, null, 2));\n\nreturn [{ json: analytics }];"
+      },
+      "id": "scraping-analytics",
+      "name": "Scraping Analytics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2220, 380]
+    }
+  ],
+  "connections": {
+    "Scraping Trigger Webhook": {
+      "main": [
+        [
+          {
+            "node": "Cache Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache Check": {
+      "main": [
+        [
+          {
+            "node": "Filter Needs Scraping",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Cache Hit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Needs Scraping": {
+      "main": [
+        [
+          {
+            "node": "Prepare Apify Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Apify Input": {
+      "main": [
+        [
+          {
+            "node": "Run LinkedIn Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run LinkedIn Scraper": {
+      "main": [
+        [
+          {
+            "node": "Process Scraped Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Scraped Data": {
+      "main": [
+        [
+          {
+            "node": "Update Scraping Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Scraping Status": {
+      "main": [
+        [
+          {
+            "node": "Trigger AI Personalization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger AI Personalization": {
+      "main": [
+        [
+          {
+            "node": "Scraping Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Cache Hit": {
+      "main": [
+        [
+          {
+            "node": "Handle Cache Hit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Cache Hit": {
+      "main": [
+        [
+          {
+            "node": "Trigger AI (Cached Data)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger AI (Cached Data)": {
+      "main": [
+        [
+          {
+            "node": "Scraping Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scraping Response": {
+      "main": [
+        [
+          {
+            "node": "Scraping Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-09-03T14:40:00.000Z",
+      "updatedAt": "2025-09-03T14:40:00.000Z",
+      "id": "linkedin-automation",
+      "name": "LinkedIn Automation"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-09-03T14:40:00.000Z",
+  "versionId": "initial"
+}

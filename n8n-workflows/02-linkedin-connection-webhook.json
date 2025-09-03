@@ -1,0 +1,277 @@
+{
+  "name": "LinkedIn Automation - Connection Webhook Handler",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/webhook/linkedin-connection",
+        "responseMode": "responseNode",
+        "options": {
+          "noResponseBody": false
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Lemlist Connection Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "linkedin-connection-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and validate webhook payload from Lemlist\nconst webhook = $input.first();\nconst body = webhook.json.body || webhook.json;\n\n// Extract relevant data\nconst eventType = body.eventType || body.event_type;\nconst leadId = body.leadId || body.lead_id;\nconst email = body.email;\nconst linkedinUrl = body.linkedinUrl || body.linkedin_url;\nconst campaignId = body.campaignId || body.campaign_id;\n\n// Validate required fields\nif (!email || !linkedinUrl) {\n  throw new Error('Missing required fields: email or linkedinUrl');\n}\n\n// Only process connection accepted events\nif (eventType !== 'linkedin_connection_accepted') {\n  return [{\n    json: {\n      status: 'skipped',\n      reason: `Event type ${eventType} not processed`,\n      email: email\n    }\n  }];\n}\n\n// Extract LinkedIn profile ID from URL\nconst profileMatch = linkedinUrl.match(/\\/in\\/([^\\/\\?]+)/);\nconst linkedinId = profileMatch ? profileMatch[1] : null;\n\nif (!linkedinId) {\n  throw new Error('Could not extract LinkedIn profile ID from URL');\n}\n\nreturn [{\n  json: {\n    event_type: eventType,\n    lead_id: leadId,\n    email: email,\n    linkedin_url: linkedinUrl,\n    linkedin_id: linkedinId,\n    campaign_id: campaignId,\n    timestamp: new Date().toISOString(),\n    status: 'connection_accepted'\n  }\n}];"
+      },
+      "id": "parse-webhook",
+      "name": "Parse Connection Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-status",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "connection_accepted",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-accepted",
+      "name": "Filter Accepted Connections",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Prospects"
+        },
+        "columnToMatchOn": "email",
+        "valueToMatchOn": "={{ $json.email }}",
+        "fieldsToUpdate": {
+          "values": [
+            {
+              "column": "linkedin_connection_status",
+              "value": "connected"
+            },
+            {
+              "column": "connection_date",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "column": "scraping_status",
+              "value": "pending"
+            }
+          ]
+        }
+      },
+      "id": "update-connection-status",
+      "name": "Update Connection Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/linkedin-scraping-trigger",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "trigger-scraping",
+      "name": "Trigger LinkedIn Scraping",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', message: 'Connection processed', email: $json.email, timestamp: $json.timestamp }) }}"
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-skipped",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "skipped",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-skipped",
+      "name": "Filter Skipped Events",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 460]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'skipped', reason: $json.reason, email: $json.email }) }}"
+      },
+      "id": "skipped-response", 
+      "name": "Skipped Event Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 460]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced logging for debugging and monitoring\nconst data = $input.first().json;\n\nconst logEntry = {\n  timestamp: new Date().toISOString(),\n  workflow: 'linkedin-connection-webhook',\n  event: {\n    type: data.event_type,\n    email: data.email,\n    linkedin_id: data.linkedin_id,\n    status: data.status\n  },\n  processing_time: Date.now() - new Date(data.timestamp).getTime()\n};\n\nconsole.log('Connection Event Processed:', JSON.stringify(logEntry, null, 2));\n\n// Store in analytics (could be extended to write to database)\nreturn [{ json: logEntry }];"
+      },
+      "id": "analytics-logging",
+      "name": "Analytics & Logging",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    }
+  ],
+  "connections": {
+    "Lemlist Connection Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Connection Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Connection Event": {
+      "main": [
+        [
+          {
+            "node": "Filter Accepted Connections",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Skipped Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Accepted Connections": {
+      "main": [
+        [
+          {
+            "node": "Update Connection Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Connection Status": {
+      "main": [
+        [
+          {
+            "node": "Trigger LinkedIn Scraping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger LinkedIn Scraping": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Response": {
+      "main": [
+        [
+          {
+            "node": "Analytics & Logging",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Skipped Events": {
+      "main": [
+        [
+          {
+            "node": "Skipped Event Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-09-03T14:35:00.000Z",
+      "updatedAt": "2025-09-03T14:35:00.000Z",
+      "id": "linkedin-automation",
+      "name": "LinkedIn Automation"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-09-03T14:35:00.000Z",
+  "versionId": "initial"
+}
