@@ -1,0 +1,40 @@
+{
+  "name": "linkedin-automation",
+  "version": "1.0.0",
+  "description": "Complete LinkedIn automation system with AI personalization and cost optimization",
+  "main": "index.js",
+  "scripts": {
+    "start": "./start.sh",
+    "dev": "./conductor-dev.sh",
+    "deploy": "./deploy.sh",
+    "monitor": "./monitor.sh",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "linkedin",
+    "automation",
+    "ai",
+    "personalization",
+    "n8n",
+    "lemlist",
+    "scraping"
+  ],
+  "author": "raphael656-GTM",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "crypto": "^1.0.1",
+    "fs": "^0.0.1-security"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/raphael656-GTM/linkedin-automation.git"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}
