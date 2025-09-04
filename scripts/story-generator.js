@@ -2,6 +2,7 @@
 
 const readline = require('readline');
 const { EnhancedStoryGenerator } = require('../routing/EnhancedStoryGenerator');
+const ParallelStoryExecutor = require('../routing/ParallelStoryExecutor');
 
 class InteractiveStoryGenerator {
     constructor() {
@@ -11,6 +12,10 @@ class InteractiveStoryGenerator {
         });
         
         this.generator = new EnhancedStoryGenerator();
+        this.executor = new ParallelStoryExecutor({
+            maxParallel: 5,
+            logLevel: 'info'
+        });
     }
     
     async run() {
@@ -29,27 +34,35 @@ class InteractiveStoryGenerator {
     async showMainMenu() {
         console.log('Available actions:');
         console.log('1. Create new story');
-        console.log('2. List active stories');
-        console.log('3. List completed stories');
-        console.log('4. Mark story as complete');
-        console.log('5. Exit');
+        console.log('2. Execute story with agents (parallel)');
+        console.log('3. List active stories');
+        console.log('4. List completed stories');
+        console.log('5. Mark story as complete');
+        console.log('6. View execution history');
+        console.log('7. Exit');
         
-        const choice = await this.ask('Choose an action (1-5): ');
+        const choice = await this.ask('Choose an action (1-7): ');
         
         switch (choice.trim()) {
             case '1':
                 await this.createNewStory();
                 break;
             case '2':
-                await this.listStories('active');
+                await this.executeStoryWithAgents();
                 break;
             case '3':
-                await this.listStories('completed');
+                await this.listStories('active');
                 break;
             case '4':
-                await this.markStoryComplete();
+                await this.listStories('completed');
                 break;
             case '5':
+                await this.markStoryComplete();
+                break;
+            case '6':
+                await this.viewExecutionHistory();
+                break;
+            case '7':
                 console.log('👋 Goodbye!');
                 return;
             default:
@@ -108,6 +121,13 @@ class InteractiveStoryGenerator {
                         console.log(`      🔗 Dependencies: ${child.story.dependencies.join(', ')}`);
                     }
                 });
+                
+                // Ask if user wants to execute immediately
+                const executeNow = await this.ask('\n🚀 Execute stories with agents now? (y/n): ');
+                if (executeNow.toLowerCase() === 'y') {
+                    console.log('\n🤖 Starting parallel agent execution...');
+                    await this.executor.executeSplitStories(result);
+                }
                 
                 if (result.conflicts.length > 0) {
                     console.log(`\n⚠️  Conflicts detected (${result.conflicts.length}):`);
@@ -228,6 +248,110 @@ class InteractiveStoryGenerator {
         return new Promise((resolve) => {
             this.rl.question(question, resolve);
         });
+    }
+    
+    async executeStoryWithAgents() {
+        console.log('\n🤖 Execute Story with Parallel Agents');
+        console.log('======================================');
+        
+        try {
+            // List recent split stories
+            const parentStories = await this.generator.listStories('active');
+            const splitStories = parentStories.filter(s => s.status === 'split' || s.title?.includes('[SPLIT]'));
+            
+            if (splitStories.length === 0) {
+                console.log('No split stories found. Create a story first and let it be split.');
+                return;
+            }
+            
+            console.log('Available split stories:');
+            splitStories.forEach((story, index) => {
+                console.log(`${index + 1}. ${story.title} (${story.id})`);
+                if (story.splitInto) {
+                    console.log(`   Split into ${story.splitInto.length} subtasks`);
+                }
+            });
+            
+            const choice = await this.ask('\nSelect story to execute (number): ');
+            const storyIndex = parseInt(choice) - 1;
+            
+            if (storyIndex < 0 || storyIndex >= splitStories.length) {
+                console.log('Invalid selection.');
+                return;
+            }
+            
+            const selectedStory = splitStories[storyIndex];
+            
+            // Reconstruct the split result from stored data
+            const splitResult = {
+                type: 'split',
+                parentStory: { story: selectedStory },
+                childStories: [],
+                executionOrder: selectedStory.executionOrder || [],
+                conflicts: selectedStory.conflicts || []
+            };
+            
+            // Load child stories
+            if (selectedStory.splitInto) {
+                for (const childId of selectedStory.splitInto) {
+                    const childStory = await this.generator.getStory(childId);
+                    if (childStory) {
+                        splitResult.childStories.push({ story: childStory });
+                    }
+                }
+            }
+            
+            console.log(`\n🚀 Executing ${splitResult.childStories.length} stories in parallel...`);
+            const execution = await this.executor.executeSplitStories(splitResult);
+            
+            console.log('\n📊 Execution Results:');
+            console.log(`Status: ${execution.status}`);
+            console.log(`Duration: ${execution.duration}ms`);
+            console.log(`Stories executed: ${execution.results.length}`);
+            
+            const successful = execution.results.filter(r => r.status === 'completed').length;
+            const failed = execution.results.filter(r => r.status === 'failed').length;
+            
+            console.log(`✅ Successful: ${successful}`);
+            if (failed > 0) {
+                console.log(`❌ Failed: ${failed}`);
+            }
+            
+        } catch (error) {
+            console.error('❌ Error executing story:', error.message);
+        }
+    }
+    
+    async viewExecutionHistory() {
+        console.log('\n📊 Execution History');
+        console.log('====================');
+        
+        const history = this.executor.getExecutionHistory();
+        
+        if (history.length === 0) {
+            console.log('No execution history available.');
+            return;
+        }
+        
+        console.log(`\nTotal executions: ${history.length}`);
+        
+        history.forEach((exec, index) => {
+            console.log(`\n${index + 1}. Execution ${exec.id}`);
+            console.log(`   Parent: ${exec.parentStory}`);
+            console.log(`   Status: ${exec.status}`);
+            console.log(`   Duration: ${exec.duration ? exec.duration + 'ms' : 'N/A'}`);
+            console.log(`   Stories: ${exec.storiesExecuted} executed, ${exec.failures} failed`);
+            console.log(`   Time: ${exec.startTime}`);
+        });
+        
+        // Show active executions if any
+        const active = this.executor.getActiveExecutions();
+        if (active.length > 0) {
+            console.log(`\n🔄 Active Executions: ${active.length}`);
+            active.forEach(exec => {
+                console.log(`   - ${exec.id}: ${exec.parentStory.title}`);
+            });
+        }
     }
 }
 

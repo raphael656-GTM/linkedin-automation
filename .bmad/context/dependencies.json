@@ -1,0 +1,118 @@
+{
+  "timestamp": "2025-09-03T14:54:40.727Z",
+  "npm": {
+    "production": {
+      "axios": "^1.6.0",
+      "crypto": "^1.0.1",
+      "fs": "^0.0.1-security",
+      "glob": "^11.0.3"
+    },
+    "development": {
+      "nodemon": "^3.0.1"
+    },
+    "scripts": {
+      "start": "./start.sh",
+      "dev": "./conductor-dev.sh",
+      "deploy": "./deploy.sh",
+      "monitor": "./monitor.sh",
+      "test": "echo \"Error: no test specified\" && exit 1",
+      "bmad:flatten": "node scripts/codebase-flattener.js",
+      "bmad:story": "node scripts/story-generator.js",
+      "bmad:plan": "node scripts/agent-planner.js",
+      "bmad:init": "node scripts/bmad-init.js"
+    }
+  },
+  "internal": {
+    "SubAgentArchitecture.js": [
+      "./routing/TaskComplexityAnalyzer",
+      "./routing/TaskRouter",
+      "./quality/QualityAssurance",
+      "./context/ContextManager",
+      "./recovery/ErrorRecovery",
+      "./protocols/HandoffProtocols",
+      "./specialists/tier1/ArchitectureGeneralist",
+      "./specialists/tier1/SecurityGeneralist",
+      "./specialists/tier1/PerformanceGeneralist",
+      "./specialists/tier1/DataGeneralist",
+      "./specialists/tier1/IntegrationGeneralist",
+      "./specialists/tier1/FrontendGeneralist",
+      "./specialists/tier2/DatabaseSpecialist",
+      "./specialists/tier3/SystemArchitect"
+    ],
+    "specialists/tier3/SystemArchitect.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier3/SecurityArchitect.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier3/ScaleArchitect.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier3/IntegrationArchitect.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier3/GovernanceArchitect.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier3/DataArchitect.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier2/TestingStrategySpecialist.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier2/PerformanceOptimizationSpecialist.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier2/MlIntegrationSpecialist.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier2/DatabaseSpecialist.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier2/AuthSystemsSpecialist.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier2/ApiDesignSpecialist.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier1/SecurityGeneralist.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier1/PerformanceGeneralist.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier1/IntegrationGeneralist.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier1/FrontendGeneralist.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier1/DataGeneralist.js": [
+      "../BaseSpecialist"
+    ],
+    "specialists/tier1/ArchitectureGeneralist.js": [
+      "../BaseSpecialist"
+    ],
+    "routing/TaskRouter.js": [
+      "./TaskComplexityAnalyzer"
+    ]
+  },
+  "external": [
+    {
+      "service": "Google Sheets",
+      "type": "data-source"
+    },
+    {
+      "service": "Lemlist",
+      "type": "email-automation"
+    },
+    {
+      "service": "LinkedIn",
+      "type": "social-scraping"
+    },
+    {
+      "service": "OpenAI/Claude",
+      "type": "ai-personalization"
+    }
+  ]
+}

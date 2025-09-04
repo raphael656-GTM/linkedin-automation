@@ -1,0 +1,206 @@
+{
+  "name": "Connection Acceptance Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lemlist-webhook",
+        "responseMode": "onReceived",
+        "responseCode": 200
+      },
+      "name": "Lemlist Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "{{$env.WEBHOOK_ID}}"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n                        // Extract connection data\n                        const data = $json;\n                        return {\n                            email: data.email,\n                            firstName: data.firstName,\n                            lastName: data.lastName,\n                            company: data.company,\n                            linkedinUrl: data.linkedinUrl,\n                            acceptedAt: new Date().toISOString()\n                        };\n                    "
+      },
+      "name": "Extract Connection Data",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "name": "Parallel Research",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.apify.com/v2/acts/linkedin-scraper/runs",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {{$credentials.apifyToken}}"
+        },
+        "body": {
+          "profileUrl": "={{$json.linkedinUrl}}",
+          "includePosts": true,
+          "postsLimit": 10
+        }
+      },
+      "name": "Apify LinkedIn Scraper",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        650,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search",
+        "qs": {
+          "q": "={{$json.company}} news 2024",
+          "api_key": "={{$credentials.serperApiKey}}",
+          "num": "5"
+        }
+      },
+      "name": "Serper News Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        650,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.openai.com/v1/chat/completions",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "headers": {
+          "Authorization": "Bearer {{$credentials.openaiApiKey}}"
+        },
+        "bodyParametersJson": {
+          "model": "gpt-4",
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are crafting personalized LinkedIn messages for healthcare executives. Based on the research provided, generate 3 progressive messages:\n\nMessage 1 (Introduction): Reference specific recent activity, genuine connection, under 150 words, no pitch.\n\nMessage 2 (Value Bridge): Reference company initiative, share insight, soft value intro, under 200 words.\n\nMessage 3 (Clear CTA): Direct but respectful, specific value prop, clear next step, under 150 words."
+            },
+            {
+              "role": "user",
+              "content": "Prospect: {{$json.firstName}} {{$json.lastName}}\\nTitle: {{$json.title}}\\nCompany: {{$json.company}}\\nResearch: {{$json.research}}"
+            }
+          ],
+          "temperature": 0.7
+        }
+      },
+      "name": "Generate AI Messages",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.lemlist.com/api/campaigns/{{$env.LEMLIST_ENGAGEMENT_CAMPAIGN}}/leads",
+        "method": "POST",
+        "headers": {
+          "X-API-KEY": "={{$credentials.lemlistApi}}"
+        },
+        "bodyParametersJson": {
+          "email": "={{$json.email}}",
+          "firstName": "={{$json.firstName}}",
+          "lastName": "={{$json.lastName}}",
+          "custom_intro": "={{$json.message1}}",
+          "custom_value": "={{$json.message2}}",
+          "custom_cta": "={{$json.message3}}",
+          "research_notes": "={{$json.research_summary}}"
+        }
+      },
+      "name": "Add to Engagement Campaign",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1250,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Lemlist Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Connection Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Connection Data": {
+      "main": [
+        [
+          {
+            "node": "Apify LinkedIn Scraper",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Serper News Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify LinkedIn Scraper": {
+      "main": [
+        [
+          {
+            "node": "Parallel Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serper News Search": {
+      "main": [
+        [
+          {
+            "node": "Parallel Research",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Parallel Research": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Messages": {
+      "main": [
+        [
+          {
+            "node": "Add to Engagement Campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

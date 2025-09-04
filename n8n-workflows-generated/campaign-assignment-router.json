@@ -1,0 +1,204 @@
+{
+  "name": "Campaign Assignment Router",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "name": "Hourly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "read",
+        "sheetId": "{{$env.GOOGLE_SHEET_ID}}",
+        "range": "Enriched Data!A2:Z",
+        "filters": {
+          "conditions": [
+            {
+              "column": "status",
+              "value": "enriched"
+            }
+          ]
+        },
+        "options": {
+          "limit": 50
+        }
+      },
+      "name": "Read Enriched Prospects",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "campaignType",
+        "options": {}
+      },
+      "name": "Split by Campaign",
+      "type": "n8n-nodes-base.itemLists",
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "campaignId",
+              "value": "={{$json.campaignType === 'C-Suite' ? $env.LEMLIST_CSUITE_CAMPAIGN : $json.campaignType === 'IT-Digital' ? $env.LEMLIST_IT_CAMPAIGN : $json.campaignType === 'Patient-Experience' ? $env.LEMLIST_PATIENT_CAMPAIGN : $json.campaignType === 'Operations-Revenue' ? $env.LEMLIST_OPS_CAMPAIGN : $env.LEMLIST_GENERAL_CAMPAIGN}}"
+            }
+          ]
+        }
+      },
+      "name": "Set Campaign ID",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.lemlist.com/api/campaigns/{{$json.campaignId}}/leads",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "headers": {
+          "X-API-KEY": "={{$credentials.lemlistApi}}"
+        },
+        "bodyParametersJson": {
+          "email": "={{$json.email}}",
+          "firstName": "={{$json.firstName}}",
+          "lastName": "={{$json.lastName}}",
+          "company": "={{$json.company}}",
+          "linkedinUrl": "={{$json.linkedinUrl}}"
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 20,
+              "batchInterval": 2000
+            }
+          }
+        }
+      },
+      "name": "Add to Lemlist Campaign",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "update",
+        "sheetId": "{{$env.GOOGLE_SHEET_ID}}",
+        "range": "Campaign Tracking!A:Z",
+        "dataMode": "autoMapInputData",
+        "fieldsUi": {
+          "fields": [
+            {
+              "column": "email",
+              "value": "={{$json.email}}"
+            },
+            {
+              "column": "connection_campaign_id",
+              "value": "={{$json.campaignId}}"
+            },
+            {
+              "column": "connection_sent_date",
+              "value": "={{new Date().toISOString()}}"
+            },
+            {
+              "column": "status",
+              "value": "in_campaign"
+            }
+          ]
+        }
+      },
+      "name": "Update Tracking",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        1250,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Hourly Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Enriched Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Enriched Prospects": {
+      "main": [
+        [
+          {
+            "node": "Split by Campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split by Campaign": {
+      "main": [
+        [
+          {
+            "node": "Set Campaign ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Campaign ID": {
+      "main": [
+        [
+          {
+            "node": "Add to Lemlist Campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Lemlist Campaign": {
+      "main": [
+        [
+          {
+            "node": "Update Tracking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
