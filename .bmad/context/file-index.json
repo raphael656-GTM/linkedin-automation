@@ -1,0 +1,260 @@
+{
+  "generated": "2025-09-03T14:54:40.733Z",
+  "files": [
+    {
+      "path": "system-prompts.md",
+      "size": 60782,
+      "modified": "2025-09-03T14:14:09.257Z"
+    },
+    {
+      "path": "package.json",
+      "size": 1119,
+      "modified": "2025-09-03T14:54:36.126Z"
+    },
+    {
+      "path": "package-lock.json",
+      "size": 41330,
+      "modified": "2025-09-03T14:54:36.145Z"
+    },
+    {
+      "path": "deploy.sh",
+      "size": 9206,
+      "modified": "2025-09-03T14:14:09.227Z"
+    },
+    {
+      "path": "conductor-setup.sh",
+      "size": 1097,
+      "modified": "2025-09-03T14:14:09.226Z"
+    },
+    {
+      "path": "conductor-dev.sh",
+      "size": 914,
+      "modified": "2025-09-03T14:14:09.224Z"
+    },
+    {
+      "path": "SubAgentArchitecture.js",
+      "size": 21766,
+      "modified": "2025-09-03T14:14:09.222Z"
+    },
+    {
+      "path": "SUB-AGENT-ARCHITECTURE-TEMPLATE.md",
+      "size": 27487,
+      "modified": "2025-09-03T14:14:09.222Z"
+    },
+    {
+      "path": "README.md",
+      "size": 11271,
+      "modified": "2025-09-03T14:14:09.222Z"
+    },
+    {
+      "path": "CONTEXT.md",
+      "size": 8309,
+      "modified": "2025-09-03T14:14:09.222Z"
+    },
+    {
+      "path": "BMAD-METHOD-GENERIC-TEMPLATE.md",
+      "size": 17236,
+      "modified": "2025-09-03T14:14:09.221Z"
+    },
+    {
+      "path": "23179b2a-0094-4ae0-87cb-1d38f8a94edf.jsonl",
+      "size": 1025444,
+      "modified": "2025-09-03T14:14:09.221Z"
+    },
+    {
+      "path": "utils/cache-system.js",
+      "size": 7930,
+      "modified": "2025-09-03T14:14:09.257Z"
+    },
+    {
+      "path": "specialists/BaseSpecialist.js",
+      "size": 7132,
+      "modified": "2025-09-03T14:14:09.233Z"
+    },
+    {
+      "path": "specialists/tier3/SystemArchitect.js",
+      "size": 31687,
+      "modified": "2025-09-03T14:14:09.257Z"
+    },
+    {
+      "path": "specialists/tier3/SecurityArchitect.js",
+      "size": 45948,
+      "modified": "2025-09-03T14:14:09.250Z"
+    },
+    {
+      "path": "specialists/tier3/ScaleArchitect.js",
+      "size": 40032,
+      "modified": "2025-09-03T14:14:09.250Z"
+    },
+    {
+      "path": "specialists/tier3/IntegrationArchitect.js",
+      "size": 41865,
+      "modified": "2025-09-03T14:14:09.250Z"
+    },
+    {
+      "path": "specialists/tier3/GovernanceArchitect.js",
+      "size": 49310,
+      "modified": "2025-09-03T14:14:09.250Z"
+    },
+    {
+      "path": "specialists/tier3/DataArchitect.js",
+      "size": 48615,
+      "modified": "2025-09-03T14:14:09.247Z"
+    },
+    {
+      "path": "specialists/tier2/TestingStrategySpecialist.js",
+      "size": 37408,
+      "modified": "2025-09-03T14:14:09.240Z"
+    },
+    {
+      "path": "specialists/tier2/PerformanceOptimizationSpecialist.js",
+      "size": 51697,
+      "modified": "2025-09-03T14:14:09.240Z"
+    },
+    {
+      "path": "specialists/tier2/MlIntegrationSpecialist.js",
+      "size": 39659,
+      "modified": "2025-09-03T14:14:09.240Z"
+    },
+    {
+      "path": "specialists/tier2/DatabaseSpecialist.js",
+      "size": 29102,
+      "modified": "2025-09-03T14:14:09.240Z"
+    },
+    {
+      "path": "specialists/tier2/AuthSystemsSpecialist.js",
+      "size": 45108,
+      "modified": "2025-09-03T14:14:09.239Z"
+    },
+    {
+      "path": "specialists/tier2/ApiDesignSpecialist.js",
+      "size": 35020,
+      "modified": "2025-09-03T14:14:09.239Z"
+    },
+    {
+      "path": "specialists/tier1/SecurityGeneralist.js",
+      "size": 20370,
+      "modified": "2025-09-03T14:14:09.237Z"
+    },
+    {
+      "path": "specialists/tier1/PerformanceGeneralist.js",
+      "size": 21444,
+      "modified": "2025-09-03T14:14:09.237Z"
+    },
+    {
+      "path": "specialists/tier1/IntegrationGeneralist.js",
+      "size": 26190,
+      "modified": "2025-09-03T14:14:09.237Z"
+    },
+    {
+      "path": "specialists/tier1/FrontendGeneralist.js",
+      "size": 23147,
+      "modified": "2025-09-03T14:14:09.236Z"
+    },
+    {
+      "path": "specialists/tier1/DataGeneralist.js",
+      "size": 25166,
+      "modified": "2025-09-03T14:14:09.236Z"
+    },
+    {
+      "path": "specialists/tier1/ArchitectureGeneralist.js",
+      "size": 15733,
+      "modified": "2025-09-03T14:14:09.236Z"
+    },
+    {
+      "path": "scripts/codebase-flattener.js",
+      "size": 9856,
+      "modified": "2025-09-03T14:54:17.577Z"
+    },
+    {
+      "path": "routing/TaskRouter.js",
+      "size": 8687,
+      "modified": "2025-09-03T14:14:09.233Z"
+    },
+    {
+      "path": "routing/TaskComplexityAnalyzer.js",
+      "size": 15525,
+      "modified": "2025-09-03T14:14:09.232Z"
+    },
+    {
+      "path": "recovery/ErrorRecovery.js",
+      "size": 35119,
+      "modified": "2025-09-03T14:14:09.232Z"
+    },
+    {
+      "path": "quality/QualityAssurance.js",
+      "size": 34577,
+      "modified": "2025-09-03T14:14:09.230Z"
+    },
+    {
+      "path": "protocols/HandoffProtocols.js",
+      "size": 23465,
+      "modified": "2025-09-03T14:14:09.229Z"
+    },
+    {
+      "path": "n8n-workflows/06-response-handling.json",
+      "size": 23738,
+      "modified": "2025-09-03T14:14:09.228Z"
+    },
+    {
+      "path": "n8n-workflows/05-message-delivery.json",
+      "size": 11642,
+      "modified": "2025-09-03T14:14:09.228Z"
+    },
+    {
+      "path": "n8n-workflows/04-ai-personalization.json",
+      "size": 18373,
+      "modified": "2025-09-03T14:14:09.228Z"
+    },
+    {
+      "path": "n8n-workflows/03-linkedin-scraping-pipeline.json",
+      "size": 20620,
+      "modified": "2025-09-03T14:14:09.228Z"
+    },
+    {
+      "path": "n8n-workflows/02-linkedin-connection-webhook.json",
+      "size": 8571,
+      "modified": "2025-09-03T14:14:09.228Z"
+    },
+    {
+      "path": "n8n-workflows/01-sheets-to-lemlist-import.json",
+      "size": 7959,
+      "modified": "2025-09-03T14:14:09.228Z"
+    },
+    {
+      "path": "docs/LEMLIST-SETUP.md",
+      "size": 2166,
+      "modified": "2025-09-03T14:14:09.228Z"
+    },
+    {
+      "path": "docs/COST-OPTIMIZATION.md",
+      "size": 5444,
+      "modified": "2025-09-03T14:14:09.227Z"
+    },
+    {
+      "path": "context/ContextManager.js",
+      "size": 33216,
+      "modified": "2025-09-03T14:14:09.227Z"
+    },
+    {
+      "path": "config/sub-agent-config.json",
+      "size": 11074,
+      "modified": "2025-09-03T14:14:09.227Z"
+    },
+    {
+      "path": "config/proxy-config.js",
+      "size": 7532,
+      "modified": "2025-09-03T14:14:09.227Z"
+    },
+    {
+      "path": "config/linkedin-automation-config.json",
+      "size": 1695,
+      "modified": "2025-09-03T14:14:09.226Z"
+    },
+    {
+      "path": "Meeting Assistant/package.json",
+      "size": 231,
+      "modified": "2025-09-03T14:14:09.222Z"
+    }
+  ]
+}

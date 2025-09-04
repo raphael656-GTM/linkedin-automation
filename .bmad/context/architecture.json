@@ -1,0 +1,58 @@
+{
+  "timestamp": "2025-09-03T14:54:40.727Z",
+  "project": "LinkedIn Automation System",
+  "structure": {
+    "directories": {
+      ".": 10,
+      "Meeting Assistant": 1,
+      "config": 3,
+      "context": 1,
+      "docs": 2,
+      "n8n-workflows": 6,
+      "protocols": 1,
+      "quality": 1,
+      "recovery": 1,
+      "routing": 2,
+      "scripts": 1,
+      "specialists": 1,
+      "specialists/tier1": 6,
+      "specialists/tier2": 6,
+      "specialists/tier3": 6,
+      "utils": 1
+    },
+    "fileTypes": {
+      ".md": 7,
+      ".json": 10,
+      ".js": 29,
+      ".sh": 3
+    },
+    "components": [
+      {
+        "name": "N8N Workflows",
+        "type": "automation",
+        "path": "n8n-workflows/"
+      },
+      {
+        "name": "Sub-Agent Specialists",
+        "type": "ai-agents",
+        "path": "specialists/"
+      },
+      {
+        "name": "Configuration",
+        "type": "config",
+        "path": "config/"
+      }
+    ]
+  },
+  "technologies": [
+    "Node.js",
+    "Axios"
+  ],
+  "patterns": [
+    "Multi-Agent Architecture",
+    "Context Preservation",
+    "N8N Workflow Automation",
+    "LinkedIn Scraping Pipeline",
+    "AI Personalization"
+  ]
+}

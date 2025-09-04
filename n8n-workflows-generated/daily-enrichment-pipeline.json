@@ -1,0 +1,261 @@
+{
+  "name": "Daily Enrichment Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Daily Trigger 9AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "read",
+        "sheetId": "{{$env.GOOGLE_SHEET_ID}}",
+        "range": "Raw Prospects!A2:Z",
+        "filters": {
+          "conditions": [
+            {
+              "column": "H",
+              "value": "pending"
+            }
+          ]
+        },
+        "options": {
+          "returnAllMatches": false,
+          "limit": 100
+        }
+      },
+      "name": "Read Pending Prospects",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.lemlist.com/api/enrich",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "headers": {
+          "X-API-KEY": "={{$credentials.lemlistApi}}"
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "firstName",
+              "value": "={{$json.firstName}}"
+            },
+            {
+              "name": "lastName",
+              "value": "={{$json.lastName}}"
+            },
+            {
+              "name": "company",
+              "value": "={{$json.company}}"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 20,
+              "batchInterval": 2000
+            }
+          }
+        }
+      },
+      "name": "Lemlist Enrichment",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.email}}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "name": "Check Enrichment",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.apify.com/v2/acts/email-finder/run-sync",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "headers": {
+          "Authorization": "Bearer {{$credentials.apifyToken}}"
+        },
+        "body": {
+          "name": "={{$json.firstName}} {{$json.lastName}}",
+          "company": "={{$json.company}}"
+        }
+      },
+      "name": "Apify Fallback",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        850,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "update",
+        "sheetId": "{{$env.GOOGLE_SHEET_ID}}",
+        "range": "Enriched Data!A:Z",
+        "dataMode": "autoMapInputData",
+        "options": {
+          "upsert": true,
+          "keyColumn": "email"
+        },
+        "fieldsUi": {
+          "fields": [
+            {
+              "column": "email",
+              "value": "={{$json.email}}"
+            },
+            {
+              "column": "linkedinUrl",
+              "value": "={{$json.linkedinUrl}}"
+            },
+            {
+              "column": "status",
+              "value": "enriched"
+            },
+            {
+              "column": "enrichment_date",
+              "value": "={{new Date().toISOString()}}"
+            }
+          ]
+        }
+      },
+      "name": "Update Enriched Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "\n                        const title = $json.title.toUpperCase();\n                        let campaignType = 'General';\n                        \n                        if (['CHIEF', 'PRESIDENT', 'CEO', 'CFO', 'CTO', 'CIO', 'CMO'].some(t => title.includes(t))) {\n                            campaignType = 'C-Suite';\n                        } else if (['IT', 'DIGITAL', 'TECHNOLOGY', 'INFORMATICS', 'DATA'].some(t => title.includes(t))) {\n                            campaignType = 'IT-Digital';\n                        } else if (['PATIENT', 'EXPERIENCE', 'QUALITY', 'CLINICAL'].some(t => title.includes(t))) {\n                            campaignType = 'Patient-Experience';\n                        } else if (['REVENUE', 'OPERATIONS', 'FINANCE', 'RCM'].some(t => title.includes(t))) {\n                            campaignType = 'Operations-Revenue';\n                        }\n                        \n                        return {\n                            ...$json,\n                            campaignType,\n                            routingComplete: true\n                        };\n                    "
+      },
+      "name": "Classify by Title",
+      "type": "n8n-nodes-base.functionItem",
+      "position": [
+        1250,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Daily Trigger 9AM": {
+      "main": [
+        [
+          {
+            "node": "Read Pending Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Pending Prospects": {
+      "main": [
+        [
+          {
+            "node": "Lemlist Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lemlist Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Check Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Update Enriched Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Apify Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify Fallback": {
+      "main": [
+        [
+          {
+            "node": "Update Enriched Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Enriched Sheet": {
+      "main": [
+        [
+          {
+            "node": "Classify by Title",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-09-04T12:00:00.000Z",
+  "versionId": "1"
+}

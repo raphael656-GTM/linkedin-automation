@@ -1,0 +1,319 @@
+{
+  "id": "exec-1756986846910-bwuqohls7",
+  "parentStory": {
+    "id": "story_mf5clrju_u1l4u_parent",
+    "title": "[SPLIT] Build Complete Google Sheets to Lemlist LinkedIn Automation System",
+    "description": "Implement the complete architecture for healthcare executive outreach: Google Sheets source → n8n orchestration → Lemlist campaigns with AI personalization, processing 3000 prospects/month",
+    "type": "architecture",
+    "priority": "high",
+    "estimatedComplexity": "high",
+    "requirements": [
+      "Google Sheets with 4 tabs (Raw Prospects, Enriched Data, Campaign Tracking, Performance Metrics)",
+      "n8n Workflow 1: Daily Enrichment Pipeline (9 AM trigger)",
+      "n8n Workflow 2: Campaign Assignment Router (hourly)",
+      "n8n Workflow 3: Connection Acceptance Handler (webhook)",
+      "5 Lemlist connection campaigns by title (C-Suite, IT/Digital, Patient Experience, Operations/Revenue, General)",
+      "1 Lemlist engagement campaign with AI variables",
+      "Apify LinkedIn scraper integration",
+      "Serper.dev news search integration",
+      "OpenAI GPT-4 message generation with 3-message sequence",
+      "Cost optimization under $0.25 per prospect"
+    ],
+    "constraints": [
+      "Lemlist API rate limit: 20 requests/2 seconds",
+      "Process 3000 prospects/month",
+      "Connection acceptance to message: under 5 minutes",
+      "Message quality: healthcare executive appropriate",
+      "Total cost: under $180/month"
+    ],
+    "tags": [
+      "linkedin",
+      "automation",
+      "n8n",
+      "lemlist",
+      "sheets",
+      "ai-personalization"
+    ],
+    "acceptanceCriteria": [
+      "All 3 n8n workflows operational",
+      "5 connection campaigns created in Lemlist",
+      "AI generates personalized messages for each prospect",
+      "System processes 100+ prospects daily",
+      "Cost per prospect stays under $0.25",
+      "Webhook response time under 5 minutes"
+    ],
+    "createdAt": "2025-09-04T11:54:06.906Z",
+    "status": "split",
+    "splitInto": [
+      "story_mf5clrju_u1l4u_1",
+      "story_mf5clrju_u1l4u_2"
+    ],
+    "executionOrder": [
+      "story_mf5clrju_u1l4u_1",
+      "story_mf5clrju_u1l4u_2"
+    ],
+    "conflicts": [],
+    "recommendation": "Split recommended - no conflicts detected between subtasks"
+  },
+  "childStories": [
+    {
+      "story": {
+        "id": "story_mf5clrju_u1l4u_1",
+        "title": "Build Complete Google Sheets to Lemlist LinkedIn Automation System - Implement the complete architecture for healthcare executive outreach: Google Sheets source → n8n orchestration → Lemlist campaigns with AI personalization",
+        "description": "Implement the complete architecture for healthcare executive outreach: Google Sheets source → n8n orchestration → Lemlist campaigns with AI personalization",
+        "type": "architecture",
+        "priority": "high",
+        "estimatedComplexity": "high",
+        "requirements": [
+          "Google Sheets with 4 tabs (Raw Prospects, Enriched Data, Campaign Tracking, Performance Metrics)",
+          "n8n Workflow 1: Daily Enrichment Pipeline (9 AM trigger)",
+          "n8n Workflow 2: Campaign Assignment Router (hourly)",
+          "n8n Workflow 3: Connection Acceptance Handler (webhook)",
+          "5 Lemlist connection campaigns by title (C-Suite, IT/Digital, Patient Experience, Operations/Revenue, General)",
+          "1 Lemlist engagement campaign with AI variables",
+          "Apify LinkedIn scraper integration",
+          "Serper.dev news search integration",
+          "OpenAI GPT-4 message generation with 3-message sequence",
+          "Cost optimization under $0.25 per prospect"
+        ],
+        "constraints": [
+          "Lemlist API rate limit: 20 requests/2 seconds",
+          "Process 3000 prospects/month",
+          "Connection acceptance to message: under 5 minutes",
+          "Message quality: healthcare executive appropriate",
+          "Total cost: under $180/month"
+        ],
+        "tags": [
+          "split_feature",
+          "linkedin",
+          "automation",
+          "n8n",
+          "lemlist",
+          "sheets",
+          "ai-personalization"
+        ],
+        "acceptanceCriteria": [
+          "All 3 n8n workflows operational",
+          "5 connection campaigns created in Lemlist",
+          "AI generates personalized messages for each prospect",
+          "System processes 100+ prospects daily",
+          "Cost per prospect stays under $0.25",
+          "Webhook response time under 5 minutes"
+        ],
+        "createdAt": "2025-09-04T11:54:06.906Z",
+        "status": "active",
+        "dependencies": []
+      },
+      "file": ".bmad/stories/active/story_mf5clrju_u1l4u_1.md"
+    },
+    {
+      "story": {
+        "id": "story_mf5clrju_u1l4u_2",
+        "title": "Build Complete Google Sheets to Lemlist LinkedIn Automation System - processing 3000 prospects/month",
+        "description": "processing 3000 prospects/month",
+        "type": "architecture",
+        "priority": "high",
+        "estimatedComplexity": "high",
+        "requirements": [
+          "Google Sheets with 4 tabs (Raw Prospects, Enriched Data, Campaign Tracking, Performance Metrics)",
+          "n8n Workflow 1: Daily Enrichment Pipeline (9 AM trigger)",
+          "n8n Workflow 2: Campaign Assignment Router (hourly)",
+          "n8n Workflow 3: Connection Acceptance Handler (webhook)",
+          "5 Lemlist connection campaigns by title (C-Suite, IT/Digital, Patient Experience, Operations/Revenue, General)",
+          "1 Lemlist engagement campaign with AI variables",
+          "Apify LinkedIn scraper integration",
+          "Serper.dev news search integration",
+          "OpenAI GPT-4 message generation with 3-message sequence",
+          "Cost optimization under $0.25 per prospect"
+        ],
+        "constraints": [
+          "Lemlist API rate limit: 20 requests/2 seconds",
+          "Process 3000 prospects/month",
+          "Connection acceptance to message: under 5 minutes",
+          "Message quality: healthcare executive appropriate",
+          "Total cost: under $180/month"
+        ],
+        "tags": [
+          "split_feature",
+          "linkedin",
+          "automation",
+          "n8n",
+          "lemlist",
+          "sheets",
+          "ai-personalization"
+        ],
+        "acceptanceCriteria": [
+          "All 3 n8n workflows operational",
+          "5 connection campaigns created in Lemlist",
+          "AI generates personalized messages for each prospect",
+          "System processes 100+ prospects daily",
+          "Cost per prospect stays under $0.25",
+          "Webhook response time under 5 minutes"
+        ],
+        "createdAt": "2025-09-04T11:54:06.906Z",
+        "status": "active",
+        "dependencies": [
+          "story_mf5clrju_u1l4u_1"
+        ]
+      },
+      "file": ".bmad/stories/active/story_mf5clrju_u1l4u_2.md"
+    }
+  ],
+  "executionOrder": [
+    {
+      "id": "story_mf5clrju_u1l4u_1",
+      "title": "Build Complete Google Sheets to Lemlist LinkedIn Automation System - Implement the complete architecture for healthcare executive outreach: Google Sheets source → n8n orchestration → Lemlist campaigns with AI personalization",
+      "description": "Implement the complete architecture for healthcare executive outreach: Google Sheets source → n8n orchestration → Lemlist campaigns with AI personalization",
+      "type": "architecture",
+      "priority": "high",
+      "estimatedComplexity": "high",
+      "requirements": [
+        "Google Sheets with 4 tabs (Raw Prospects, Enriched Data, Campaign Tracking, Performance Metrics)",
+        "n8n Workflow 1: Daily Enrichment Pipeline (9 AM trigger)",
+        "n8n Workflow 2: Campaign Assignment Router (hourly)",
+        "n8n Workflow 3: Connection Acceptance Handler (webhook)",
+        "5 Lemlist connection campaigns by title (C-Suite, IT/Digital, Patient Experience, Operations/Revenue, General)",
+        "1 Lemlist engagement campaign with AI variables",
+        "Apify LinkedIn scraper integration",
+        "Serper.dev news search integration",
+        "OpenAI GPT-4 message generation with 3-message sequence",
+        "Cost optimization under $0.25 per prospect"
+      ],
+      "constraints": [
+        "Lemlist API rate limit: 20 requests/2 seconds",
+        "Process 3000 prospects/month",
+        "Connection acceptance to message: under 5 minutes",
+        "Message quality: healthcare executive appropriate",
+        "Total cost: under $180/month"
+      ],
+      "tags": [
+        "split_feature",
+        "linkedin",
+        "automation",
+        "n8n",
+        "lemlist",
+        "sheets",
+        "ai-personalization"
+      ],
+      "acceptanceCriteria": [
+        "All 3 n8n workflows operational",
+        "5 connection campaigns created in Lemlist",
+        "AI generates personalized messages for each prospect",
+        "System processes 100+ prospects daily",
+        "Cost per prospect stays under $0.25",
+        "Webhook response time under 5 minutes"
+      ],
+      "createdAt": "2025-09-04T11:54:06.906Z",
+      "status": "active",
+      "dependencies": []
+    },
+    {
+      "id": "story_mf5clrju_u1l4u_2",
+      "title": "Build Complete Google Sheets to Lemlist LinkedIn Automation System - processing 3000 prospects/month",
+      "description": "processing 3000 prospects/month",
+      "type": "architecture",
+      "priority": "high",
+      "estimatedComplexity": "high",
+      "requirements": [
+        "Google Sheets with 4 tabs (Raw Prospects, Enriched Data, Campaign Tracking, Performance Metrics)",
+        "n8n Workflow 1: Daily Enrichment Pipeline (9 AM trigger)",
+        "n8n Workflow 2: Campaign Assignment Router (hourly)",
+        "n8n Workflow 3: Connection Acceptance Handler (webhook)",
+        "5 Lemlist connection campaigns by title (C-Suite, IT/Digital, Patient Experience, Operations/Revenue, General)",
+        "1 Lemlist engagement campaign with AI variables",
+        "Apify LinkedIn scraper integration",
+        "Serper.dev news search integration",
+        "OpenAI GPT-4 message generation with 3-message sequence",
+        "Cost optimization under $0.25 per prospect"
+      ],
+      "constraints": [
+        "Lemlist API rate limit: 20 requests/2 seconds",
+        "Process 3000 prospects/month",
+        "Connection acceptance to message: under 5 minutes",
+        "Message quality: healthcare executive appropriate",
+        "Total cost: under $180/month"
+      ],
+      "tags": [
+        "split_feature",
+        "linkedin",
+        "automation",
+        "n8n",
+        "lemlist",
+        "sheets",
+        "ai-personalization"
+      ],
+      "acceptanceCriteria": [
+        "All 3 n8n workflows operational",
+        "5 connection campaigns created in Lemlist",
+        "AI generates personalized messages for each prospect",
+        "System processes 100+ prospects daily",
+        "Cost per prospect stays under $0.25",
+        "Webhook response time under 5 minutes"
+      ],
+      "createdAt": "2025-09-04T11:54:06.906Z",
+      "status": "active",
+      "dependencies": [
+        "story_mf5clrju_u1l4u_1"
+      ]
+    }
+  ],
+  "conflicts": [],
+  "startTime": "2025-09-04T11:54:06.910Z",
+  "status": "failed",
+  "results": [
+    {
+      "story": {
+        "id": "story_mf5clrju_u1l4u_1",
+        "title": "Build Complete Google Sheets to Lemlist LinkedIn Automation System - Implement the complete architecture for healthcare executive outreach: Google Sheets source → n8n orchestration → Lemlist campaigns with AI personalization",
+        "description": "Implement the complete architecture for healthcare executive outreach: Google Sheets source → n8n orchestration → Lemlist campaigns with AI personalization",
+        "type": "architecture",
+        "priority": "high",
+        "estimatedComplexity": "high",
+        "requirements": [
+          "Google Sheets with 4 tabs (Raw Prospects, Enriched Data, Campaign Tracking, Performance Metrics)",
+          "n8n Workflow 1: Daily Enrichment Pipeline (9 AM trigger)",
+          "n8n Workflow 2: Campaign Assignment Router (hourly)",
+          "n8n Workflow 3: Connection Acceptance Handler (webhook)",
+          "5 Lemlist connection campaigns by title (C-Suite, IT/Digital, Patient Experience, Operations/Revenue, General)",
+          "1 Lemlist engagement campaign with AI variables",
+          "Apify LinkedIn scraper integration",
+          "Serper.dev news search integration",
+          "OpenAI GPT-4 message generation with 3-message sequence",
+          "Cost optimization under $0.25 per prospect"
+        ],
+        "constraints": [
+          "Lemlist API rate limit: 20 requests/2 seconds",
+          "Process 3000 prospects/month",
+          "Connection acceptance to message: under 5 minutes",
+          "Message quality: healthcare executive appropriate",
+          "Total cost: under $180/month"
+        ],
+        "tags": [
+          "split_feature",
+          "linkedin",
+          "automation",
+          "n8n",
+          "lemlist",
+          "sheets",
+          "ai-personalization"
+        ],
+        "acceptanceCriteria": [
+          "All 3 n8n workflows operational",
+          "5 connection campaigns created in Lemlist",
+          "AI generates personalized messages for each prospect",
+          "System processes 100+ prospects daily",
+          "Cost per prospect stays under $0.25",
+          "Webhook response time under 5 minutes"
+        ],
+        "createdAt": "2025-09-04T11:54:06.906Z",
+        "status": "active",
+        "dependencies": []
+      },
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'ml')",
+      "timestamp": "2025-09-04T11:54:06.912Z"
+    }
+  ],
+  "error": "Execution aborted due to critical failures in group 1",
+  "endTime": "2025-09-04T11:54:06.912Z"
+}
