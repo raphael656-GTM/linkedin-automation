@@ -1,0 +1,26 @@
+{
+  "title": "Implement Comprehensive Result Scoring",
+  "type": "feature",
+  "description": "Create unified scoring system that combines all validation signals.\n        \nPurpose:\n- Integrate name, company, and search strategy confidence\n- Provide transparent scoring for each result\n- Allow threshold-based filtering\n\nImplementation:\n1. Score components:\n   - Name match score (0-40 points)\n   - Company match score (0-30 points)\n   - Title/role match score (0-20 points)\n   - Search strategy confidence (0-10 points)\n2. Minimum threshold: 70/100 for acceptance\n3. Return top result only if above threshold\n4. Provide detailed score breakdown in logs",
+  "acceptance_criteria": [
+    "Unified scoring system across all validators",
+    "Configurable acceptance threshold",
+    "Score breakdown in results",
+    "Performance metrics tracking"
+  ],
+  "priority": "medium",
+  "complexity": "medium",
+  "assignee": "integration-specialist",
+  "dependencies": [
+    "searchStrategyStory",
+    "nameValidationStory",
+    "companyVerificationStory"
+  ],
+  "files_affected": [
+    "google-apps-scripts/linkedin-profile-finder.gs"
+  ],
+  "estimated_hours": 3,
+  "id": "linkedin_finder_1757055543510_3",
+  "created": "2025-09-05T06:59:03.516Z",
+  "status": "pending"
+}
