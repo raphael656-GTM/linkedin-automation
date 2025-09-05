@@ -1,0 +1,22 @@
+{
+  "title": "Implement Strict Name Pattern Validation",
+  "type": "feature",
+  "description": "Create robust name validation that prevents substring contamination.\n        \nCurrent Problem:\n- Using content.includes() for name matching\n- \"Joselyn Estrada Pascual\" matches search for \"Pascual Estrada\"\n- No pattern-based validation\n\nSolution:\n1. Implement regex-based name patterns:\n   - Pattern A: \"FirstName LastName\" (exact order)\n   - Pattern B: \"LastName, FirstName\" (LinkedIn format)\n   - Pattern C: \"FirstName M. LastName\" (with middle initial)\n2. Use word boundaries (\\b) to prevent partial matches\n3. Score matches based on exact pattern compliance\n4. Handle special characters (O'Neill, García, etc.)",
+  "acceptance_criteria": [
+    "Regex patterns for all common name formats",
+    "No false positives from name contamination",
+    "Handles international names and special characters",
+    "Returns match confidence score"
+  ],
+  "priority": "high",
+  "complexity": "medium",
+  "assignee": "validation-specialist",
+  "dependencies": [],
+  "files_affected": [
+    "google-apps-scripts/linkedin-profile-finder.gs"
+  ],
+  "estimated_hours": 3,
+  "id": "linkedin_finder_1757055543510_1",
+  "created": "2025-09-05T06:59:03.515Z",
+  "status": "pending"
+}

@@ -1,0 +1,24 @@
+{
+  "title": "Create Test Suite for Profile Finder",
+  "type": "testing",
+  "description": "Build comprehensive test suite with real-world problem cases.\n        \nTest Cases:\n1. Name contamination tests:\n   - \"Pascual Estrada\" should not match \"Joselyn Estrada Pascual\"\n   - \"Kelly O'Neill\" should not match \"Arianna Bonné\"\n2. Company validation tests:\n   - Same person, different company (reject)\n   - Company with abbreviations (accept if aliased)\n3. Edge cases:\n   - Names with special characters (O'Neill, García)\n   - Single-word companies\n   - People who changed companies recently\n\nImplementation:\n- 50+ test cases based on actual failures\n- Performance benchmarks\n- Success rate tracking",
+  "acceptance_criteria": [
+    "50+ test cases covering all known issues",
+    "Automated test runner in Google Apps Script",
+    "Performance metrics (should maintain <2s per search)",
+    "Success rate dashboard"
+  ],
+  "priority": "medium",
+  "complexity": "low",
+  "assignee": "testing-specialist",
+  "dependencies": [
+    "scoringStory"
+  ],
+  "files_affected": [
+    "google-apps-scripts/test-linkedin-finder.gs"
+  ],
+  "estimated_hours": 3,
+  "id": "linkedin_finder_1757055543510_4",
+  "created": "2025-09-05T06:59:03.516Z",
+  "status": "pending"
+}
