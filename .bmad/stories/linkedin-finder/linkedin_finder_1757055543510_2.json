@@ -1,0 +1,22 @@
+{
+  "title": "Add Company Match Verification",
+  "type": "feature",
+  "description": "Implement company matching logic to prevent wrong-company results.\n        \nCurrent Problem:\n- Finding right person at wrong company\n- Example: \"Pascual Estrada at Mount Sinai\" returns \"Pascual Estrada at Tufts\"\n- Weak company validation (50% word match)\n\nSolution:\n1. Implement company scoring algorithm:\n   - Exact match: 100 points\n   - All key words present: 80 points\n   - Industry + partial match: 60 points\n   - No match: 0 points (reject)\n2. Create company alias database:\n   - \"Mount Sinai\" = [\"Mount Sinai Health\", \"MSH\", \"Mount Sinai Hospital\"]\n3. Require minimum company score threshold\n4. Log company match reasoning",
+  "acceptance_criteria": [
+    "Company scoring algorithm implemented",
+    "Common healthcare system aliases handled",
+    "Minimum 60% company match required",
+    "Clear logging of company match scores"
+  ],
+  "priority": "high",
+  "complexity": "medium",
+  "assignee": "data-specialist",
+  "dependencies": [],
+  "files_affected": [
+    "google-apps-scripts/linkedin-profile-finder.gs"
+  ],
+  "estimated_hours": 4,
+  "id": "linkedin_finder_1757055543510_2",
+  "created": "2025-09-05T06:59:03.516Z",
+  "status": "pending"
+}
