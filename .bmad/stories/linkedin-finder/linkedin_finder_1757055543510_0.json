@@ -1,0 +1,22 @@
+{
+  "title": "Redesign Search Strategy Ordering",
+  "type": "refactoring",
+  "description": "Implement tiered search strategies that prioritize accuracy over coverage.\n        \nCurrent Problem:\n- 8 strategies with progressively broader searches\n- Falls back to overly broad searches that return wrong results\n- Example: Searching for \"Kelly O'Neill\" returns \"Arianna Bonné\"\n\nSolution:\n1. Implement 3-tier strategy system:\n   - Tier 1: Exact match strategies (name + company + title)\n   - Tier 2: High-confidence strategies (name + company variations)\n   - Tier 3: OPTIONAL fallback (only if user explicitly allows)\n2. Add confidence scoring to each result\n3. Return \"Not Found\" rather than wrong person\n4. Track which strategy produced the result",
+  "acceptance_criteria": [
+    "Only 3-4 high-precision strategies implemented",
+    "Each strategy has a confidence score",
+    "Broad searches are opt-in only",
+    "Clear logging of which strategy succeeded"
+  ],
+  "priority": "high",
+  "complexity": "medium",
+  "assignee": "search-specialist",
+  "dependencies": [],
+  "files_affected": [
+    "google-apps-scripts/linkedin-profile-finder.gs"
+  ],
+  "estimated_hours": 4,
+  "id": "linkedin_finder_1757055543510_0",
+  "created": "2025-09-05T06:59:03.510Z",
+  "status": "pending"
+}
