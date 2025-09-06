@@ -1,0 +1,458 @@
+{
+  "name": "LinkedIn-Only Automation Workflow (Bright Data Integration)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "daily-trigger",
+      "name": "Daily Trigger 9AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "read",
+        "sheetId": "{{$env.GOOGLE_SHEET_ID}}",
+        "range": "Raw Prospects!A2:Z",
+        "filters": {
+          "conditions": [
+            {
+              "column": "status",
+              "value": "pending"
+            }
+          ]
+        },
+        "options": {
+          "returnAllMatches": false,
+          "limit": 100
+        }
+      },
+      "id": "read-prospects",
+      "name": "Read Pending Prospects",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "{{$env.GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec'}}",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"action\": \"findLinkedInProfile\",\n  \"firstName\": \"={{$json.firstName}}\",\n  \"lastName\": \"={{$json.lastName}}\",\n  \"company\": \"={{$json.company}}\",\n  \"title\": \"={{$json.title || ''}}\",\n  \"location\": \"={{$json.location || ''}}\"\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 2000
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "find-linkedin",
+      "name": "Find LinkedIn Profiles (GAS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Google Apps Script response\nconst response = $json;\n\n// Check if we got a valid LinkedIn URL\nif (response.success && response.linkedinUrl) {\n  return {\n    ...response,\n    linkedinUrl: response.linkedinUrl,\n    profileScore: response.score || 0,\n    searchStrategy: response.strategyUsed || 'unknown',\n    validationPassed: true\n  };\n} else {\n  // No profile found or low confidence\n  return {\n    ...response,\n    linkedinUrl: null,\n    profileScore: 0,\n    searchStrategy: 'none',\n    validationPassed: false,\n    error: response.error || 'Profile not found'\n  };\n}"
+      },
+      "id": "process-gas-response",
+      "name": "Process GAS Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "update",
+        "sheetId": "{{$env.GOOGLE_SHEET_ID}}",
+        "range": "Enriched Data!A:Z",
+        "dataMode": "autoMapInputData",
+        "options": {
+          "upsert": true,
+          "keyColumn": "firstName,lastName,company"
+        }
+      },
+      "id": "update-linkedin",
+      "name": "Update with LinkedIn URLs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const title = $json.title ? $json.title.toUpperCase() : '';\nlet campaignType = 'General';\n\nif (['CHIEF', 'PRESIDENT', 'CEO', 'CFO', 'CTO', 'CIO', 'CMO'].some(t => title.includes(t))) {\n    campaignType = 'C-Suite';\n} else if (['IT', 'DIGITAL', 'TECHNOLOGY', 'INFORMATICS', 'DATA'].some(t => title.includes(t))) {\n    campaignType = 'IT-Digital';\n} else if (['PATIENT', 'EXPERIENCE', 'QUALITY', 'CLINICAL'].some(t => title.includes(t))) {\n    campaignType = 'Patient-Experience';\n} else if (['REVENUE', 'OPERATIONS', 'FINANCE', 'RCM'].some(t => title.includes(t))) {\n    campaignType = 'Operations-Revenue';\n}\n\nreturn {\n    ...$json,\n    campaignType,\n    linkedinUrl: $json.linkedinUrl,\n    status: $json.linkedinUrl ? 'ready_to_connect' : 'profile_not_found',\n    enrichmentDate: new Date().toISOString(),\n    profileScore: $json.profileScore || 0\n};"
+      },
+      "id": "classify-prospects",
+      "name": "Classify & Route Prospects",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "linkedin-connection-accepted",
+        "options": {}
+      },
+      "id": "connection-webhook",
+      "name": "Connection Accepted Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.brightdata.com/dca/trigger",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.BRIGHT_DATA_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"dataset_id\": \"gd_l1viktl72bvl7bjuj0\",\n  \"url\": \"={{$json.linkedinUrl}}\",\n  \"format\": \"json\",\n  \"customer_id\": \"{{$env.BRIGHT_DATA_CUSTOMER_ID}}\",\n  \"zone\": \"{{$env.BRIGHT_DATA_ZONE || 'datacenter'}}\",\n  \"include_errors\": true\n}",
+        "options": {
+          "timeout": 60000,
+          "retry": {
+            "retries": 2,
+            "retryInterval": 5000
+          }
+        }
+      },
+      "id": "scrape-profile",
+      "name": "Enrich LinkedIn Profile (Bright Data)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        450,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transform Bright Data response to standardized format\nconst rawData = $json;\n\nfunction transformProfile(raw) {\n  // Handle potential error responses\n  if (raw.error || raw.status === 'error') {\n    throw new Error(`Bright Data API error: ${raw.error || raw.message || 'Unknown error'}`);\n  }\n  \n  // Extract profile ID from URL\n  const profileId = raw.url ? raw.url.match(/\\/in\\/([^\\/\\?]+)/)?.[1] : null;\n  \n  return {\n    // Basic Information\n    profileId: profileId || `profile_${Date.now()}`,\n    fullName: raw.name || '',\n    headline: raw.headline || '',\n    location: raw.location || '',\n    profileUrl: raw.url || $json.linkedinUrl,\n    profileImageUrl: raw.profile_image || '',\n    \n    // Professional Information\n    currentPosition: {\n      title: raw.current_position?.title || '',\n      company: raw.current_position?.company || '',\n      startDate: raw.current_position?.start_date || '',\n      description: raw.current_position?.description || ''\n    },\n    \n    // Experience\n    experience: (raw.experience || []).map(exp => ({\n      title: exp.title || '',\n      company: exp.company || '',\n      duration: exp.duration || '',\n      startDate: exp.start_date || '',\n      endDate: exp.end_date || '',\n      description: exp.description || ''\n    })),\n    \n    // Education\n    education: (raw.education || []).map(edu => ({\n      school: edu.school || '',\n      degree: edu.degree || '',\n      field: edu.field || '',\n      startDate: edu.start_date || '',\n      endDate: edu.end_date || ''\n    })),\n    \n    // Skills\n    skills: raw.skills || [],\n    \n    // Network\n    connectionsCount: raw.connections || 0,\n    followersCount: raw.followers || 0,\n    \n    // Recent Activity\n    recentPosts: (raw.activity?.posts || []).slice(0, 5).map(post => ({\n      text: post.text || '',\n      date: post.date || '',\n      likes: post.likes || 0,\n      comments: post.comments || 0\n    })),\n    \n    // Company Details\n    companyDetails: raw.company_details ? {\n      name: raw.company_details.name || '',\n      size: raw.company_details.size || '',\n      industry: raw.company_details.industry || '',\n      type: raw.company_details.type || '',\n      headquarters: raw.company_details.headquarters || ''\n    } : null,\n    \n    // Summary and About\n    summary: raw.summary || raw.about || '',\n    \n    // Metadata\n    enrichmentDate: new Date().toISOString(),\n    dataSource: 'bright_data',\n    dataCompleteness: calculateCompleteness(raw)\n  };\n}\n\nfunction calculateCompleteness(raw) {\n  const fields = [\n    raw.name,\n    raw.headline,\n    raw.current_position?.title,\n    raw.experience?.length > 0,\n    raw.education?.length > 0,\n    raw.skills?.length > 0,\n    raw.summary || raw.about\n  ];\n  const filled = fields.filter(f => f).length;\n  return Math.round((filled / fields.length) * 100);\n}\n\ntry {\n  const transformedProfile = transformProfile(rawData);\n  return transformedProfile;\n} catch (error) {\n  // Return error but don't stop the workflow\n  return {\n    error: error.message,\n    profileUrl: $json.linkedinUrl,\n    enrichmentFailed: true,\n    enrichmentDate: new Date().toISOString()\n  };\n}"
+      },
+      "id": "transform-brightdata",
+      "name": "Transform Bright Data Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search",
+        "method": "GET",
+        "qs": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{$json.fullName || $json.name}} {{$json.currentPosition?.company || $json.company}} news"
+            },
+            {
+              "name": "api_key",
+              "value": "{{$env.SERPER_API_KEY}}"
+            },
+            {
+              "name": "num",
+              "value": "3"
+            }
+          ]
+        }
+      },
+      "id": "search-news",
+      "name": "Search Recent News",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        650,
+        750
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "profileUrl",
+              "field2": "linkedinUrl"
+            }
+          ]
+        }
+      },
+      "id": "merge-research",
+      "name": "Merge Research Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        850,
+        675
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chatCompletion",
+        "model": "gpt-4",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an expert at creating personalized LinkedIn messages. Create a SHORT, genuine connection message (max 300 chars) based on the person's background and recent news. Use the enriched profile data to make it highly personalized."
+            },
+            {
+              "role": "user",
+              "content": "Profile:\nName: {{$json.fullName}}\nHeadline: {{$json.headline}}\nCurrent Role: {{$json.currentPosition.title}} at {{$json.currentPosition.company}}\nSkills: {{$json.skills.slice(0,5).join(', ')}}\nRecent Activity: {{$json.recentPosts[0]?.text || 'No recent posts'}}\n\nNews: {{$json.news}}\n\nCreate a personalized LinkedIn message that references something specific from their background, skills, or recent activity."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 100
+        }
+      },
+      "id": "generate-message",
+      "name": "Generate Personalized Message",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        675
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "append",
+        "sheetId": "{{$env.GOOGLE_SHEET_ID}}",
+        "range": "LinkedIn Messages!A:Z",
+        "dataMode": "autoMapInputData"
+      },
+      "id": "save-message",
+      "name": "Save Generated Message",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        675
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "daily-trigger": {
+      "main": [
+        [
+          {
+            "node": "read-prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "read-prospects": {
+      "main": [
+        [
+          {
+            "node": "find-linkedin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "find-linkedin": {
+      "main": [
+        [
+          {
+            "node": "process-gas-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "process-gas-response": {
+      "main": [
+        [
+          {
+            "node": "update-linkedin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update-linkedin": {
+      "main": [
+        [
+          {
+            "node": "classify-prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "connection-webhook": {
+      "main": [
+        [
+          {
+            "node": "scrape-profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "scrape-profile": {
+      "main": [
+        [
+          {
+            "node": "transform-brightdata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "transform-brightdata": {
+      "main": [
+        [
+          {
+            "node": "search-news",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "merge-research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search-news": {
+      "main": [
+        [
+          {
+            "node": "merge-research",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "merge-research": {
+      "main": [
+        [
+          {
+            "node": "generate-message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate-message": {
+      "main": [
+        [
+          {
+            "node": "save-message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "linkedin-automation-brightdata"
+  }
+}
