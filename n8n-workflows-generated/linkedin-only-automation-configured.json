@@ -1,0 +1,398 @@
+{
+  "name": "LinkedIn-Only Automation Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "daily-trigger",
+      "name": "Daily Trigger 9AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "read",
+        "sheetId": "test-sheet-id",
+        "range": "Raw Prospects!A2:Z",
+        "filters": {
+          "conditions": [
+            {
+              "column": "status",
+              "value": "pending"
+            }
+          ]
+        },
+        "options": {
+          "returnAllMatches": false,
+          "limit": 100
+        }
+      },
+      "id": "read-prospects",
+      "name": "Read Pending Prospects",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.apify.com/v2/acts/linkedin-profile-finder/run-sync",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.APIFY_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"firstName\": \"={{$json.firstName}}\",\n  \"lastName\": \"={{$json.lastName}}\",\n  \"company\": \"={{$json.company}}\",\n  \"title\": \"={{$json.title || ''}}\"\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 10,
+              "batchInterval": 3000
+            }
+          }
+        }
+      },
+      "id": "find-linkedin",
+      "name": "Find LinkedIn Profiles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "update",
+        "sheetId": "test-sheet-id",
+        "range": "Enriched Data!A:Z",
+        "dataMode": "autoMapInputData",
+        "options": {
+          "upsert": true,
+          "keyColumn": "firstName,lastName,company"
+        }
+      },
+      "id": "update-linkedin",
+      "name": "Update with LinkedIn URLs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const title = $json.title ? $json.title.toUpperCase() : '';\nlet campaignType = 'General';\n\nif (['CHIEF', 'PRESIDENT', 'CEO', 'CFO', 'CTO', 'CIO', 'CMO'].some(t => title.includes(t))) {\n    campaignType = 'C-Suite';\n} else if (['IT', 'DIGITAL', 'TECHNOLOGY', 'INFORMATICS', 'DATA'].some(t => title.includes(t))) {\n    campaignType = 'IT-Digital';\n} else if (['PATIENT', 'EXPERIENCE', 'QUALITY', 'CLINICAL'].some(t => title.includes(t))) {\n    campaignType = 'Patient-Experience';\n} else if (['REVENUE', 'OPERATIONS', 'FINANCE', 'RCM'].some(t => title.includes(t))) {\n    campaignType = 'Operations-Revenue';\n}\n\nreturn {\n    ...$json,\n    campaignType,\n    linkedinUrl: $json.linkedinProfileUrl || $json.linkedinUrl,\n    status: $json.linkedinUrl ? 'ready_to_connect' : 'profile_not_found',\n    enrichmentDate: new Date().toISOString()\n};"
+      },
+      "id": "classify-prospects",
+      "name": "Classify & Route Prospects",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "linkedin-connection-accepted",
+        "options": {}
+      },
+      "id": "connection-webhook",
+      "name": "Connection Accepted Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.apify.com/v2/acts/linkedin-profile-scraper/run-sync",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.APIFY_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"profileUrls\": [\"={{$json.linkedinUrl}}\"]\n}"
+      },
+      "id": "scrape-profile",
+      "name": "Scrape Full LinkedIn Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        450,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search",
+        "method": "GET",
+        "qs": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{$json.name}} {{$json.company}} news"
+            },
+            {
+              "name": "api_key",
+              "value": "={{$env.SERPER_API_KEY}}"
+            },
+            {
+              "name": "num",
+              "value": "3"
+            }
+          ]
+        }
+      },
+      "id": "search-news",
+      "name": "Search Recent News",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        450,
+        750
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "linkedinUrl",
+              "field2": "linkedinUrl"
+            }
+          ]
+        }
+      },
+      "id": "merge-research",
+      "name": "Merge Research Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        650,
+        675
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chatCompletion",
+        "model": "gpt-4",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an expert at creating personalized LinkedIn messages. Create a SHORT, genuine connection message (max 300 chars) based on the person's background and recent news."
+            },
+            {
+              "role": "user",
+              "content": "Profile: {{$json.profile}}\nNews: {{$json.news}}\n\nCreate a personalized LinkedIn message that references something specific from their background or recent company news."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 100
+        }
+      },
+      "id": "generate-message",
+      "name": "Generate Personalized Message",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [
+        850,
+        675
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "append",
+        "sheetId": "test-sheet-id",
+        "range": "LinkedIn Messages!A:Z"
+      },
+      "id": "save-message",
+      "name": "Save Generated Message",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        675
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "daily-trigger": {
+      "main": [
+        [
+          {
+            "node": "read-prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "read-prospects": {
+      "main": [
+        [
+          {
+            "node": "find-linkedin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "find-linkedin": {
+      "main": [
+        [
+          {
+            "node": "update-linkedin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update-linkedin": {
+      "main": [
+        [
+          {
+            "node": "classify-prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "connection-webhook": {
+      "main": [
+        [
+          {
+            "node": "scrape-profile",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "search-news",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "scrape-profile": {
+      "main": [
+        [
+          {
+            "node": "merge-research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search-news": {
+      "main": [
+        [
+          {
+            "node": "merge-research",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "merge-research": {
+      "main": [
+        [
+          {
+            "node": "generate-message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate-message": {
+      "main": [
+        [
+          {
+            "node": "save-message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "linkedin-automation"
+  }
+}
